@@ -1,0 +1,12 @@
+# Runtime data - contains full debate transcripts and summaries.
+# Do NOT commit: everything said in your debates lives here.
+logs/
+memory/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local environment
+sophia-env/
+*.env

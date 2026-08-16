@@ -1,0 +1,12 @@
+# Core pipeline
+sounddevice
+numpy
+requests
+faster-whisper
+kokoro
+
+# Optional: better voice activity detection for the experimental
+# voice-activated mode (VOICE_ACTIVATED = True in debate_voice.py).
+# On Windows use webrtcvad-wheels (prebuilt); plain webrtcvad needs a C
+# compiler. The bot falls back to an energy-based VAD without it.
+# webrtcvad-wheels

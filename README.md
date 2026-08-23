@@ -18,6 +18,7 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
 - **Typed commands** at the talk prompt:
   - `new` — fresh opponent, context cleared (saves a memory summary first)
   - `deep` — toggle thinking mode: she reasons before answering (slower, deeper)
+  - `mod` — speak to her as **moderator** rather than opponent: brief her ("your opponent is a Catholic priest", "ease off the mockery"), correct a mistranscription, or ask her something out of character. Briefings are applied, never argued with. `mod <text>` sends inline.
   - `verdict` — she steps out of character and coaches: your strongest point, weakest moment, and what a sharper version of your argument would look like
   - `steelman` — she rebuilds the strongest version of your argument, then attacks *that*
 - **Structured JSONL logging** — full transcripts plus per-turn diagnostics (time-to-first-token, time-to-first-audio, Ollama eval counters, model-reload detection, transcription chunk timing) for later analysis.
@@ -36,7 +37,7 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
 
 **Notes:**
 - `pip install -r requirements.txt` pulls PyTorch automatically as a Kokoro dependency. CPU-only torch is fine — the TTS model is only 82M parameters.
-- **First launch needs internet**: faster-whisper downloads its `base` model and Kokoro downloads its weights (~330MB total) from Hugging Face. After that, everything runs offline.
+- **First launch needs internet**: faster-whisper downloads its `small.en` model and Kokoro downloads its weights (~570MB total) from Hugging Face. After that, everything runs offline.
 - The launcher `.bat` uses `curl`, which is built into Windows 10+.
 
 ## Setup
@@ -64,16 +65,21 @@ First launch takes a while: Whisper and Kokoro load (downloading their models if
 
 | Script | Purpose |
 |---|---|
-| `sophia_eval.py` | Persona regression check — 8 canned inputs against the live system prompt with expected behaviors. Run after any prompt edit. |
+| `sophia_eval.py` | Persona regression check — 12 canned inputs against the live system prompt with expected behaviors. Run after any prompt edit. |
 | `export_transcripts.py` | Converts the JSONL log into readable per-session markdown transcripts with mechanical-failure flags and review-notes sections. |
 | `check_ollama_cache.py` | Diagnoses Ollama KV-cache reuse and model-reload behavior across a growing conversation. |
+| `profile_latency.py` | Isolates where response latency goes — fixed per-request overhead vs prompt size vs HTTP streaming — and reports which lever would actually help. |
+
+Version history is in [CHANGELOG.md](CHANGELOG.md), including the reasoning behind each behavioral change.
 
 ## Performance notes (hard-won)
 
 - **Pin `num_ctx` identically on every request.** Ollama restarts its model runner when a request's context size differs from the loaded runner's — a full ~13s reload. This bot pins `num_ctx: 8192` everywhere, including warm-up and memory-summary calls. If you add a new Ollama call, pin it there too.
 - **Prime the real system prompt at launch.** Warming the model with a bare "hi" loads weights but leaves the system prompt unevaluated; the first real turn then pays several seconds of prompt processing. `prime_model()` sends the actual conversation with `num_predict: 1` during the loading phase.
 - **`keep_alive: -1`** on every request so the model never unloads from VRAM between turns.
-- **Thinking needs budget.** Enabling `think` with a small `num_predict` makes the model spend the entire budget reasoning and produce zero speakable output. Deep mode uses `num_predict: 768` so reasoning and answer both fit.
+- **Thinking needs budget.** `num_predict` caps reasoning *and* answer together. At 768 the model spent the whole budget reasoning and emitted a five-word fragment after 25s of silence. Deep mode uses 2560.
+- **Don't upgrade Whisper past `small` without raising `CHUNK_SECONDS`.** Rolling chunks only stay invisible while transcription is faster than the audio it covers. `small.en` takes ~1.45s per 2.5s chunk (58% headroom); `medium` would take ~4.4s and fall progressively behind live speech.
+- **Whisper echoes its prompt on near-silent audio.** Passing prior text as decoding context improves accuracy across chunk boundaries, but on a very short tail the model returns the context instead of a transcription — producing duplicated sentences. Short tails are dropped and identical consecutive chunks discarded.
 
 ## Privacy
 

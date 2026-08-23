@@ -83,7 +83,17 @@ def main():
                 continue
             if not opened:
                 open_debate()
-            if e["role"] == "user":
+            if e["role"] == "verdict":
+                rating = m.get("rating")
+                score = f" — **{rating}/10**" if rating is not None else ""
+                lines.append(f"> **[{ts}] VERDICT{score}:** {e['text']}")
+                lines.append("")
+            elif e["role"] == "moderator":
+                # Out-of-debate operator input - marked distinctly so it
+                # isn't read as something the opponent argued.
+                lines.append(f"> **[{ts}] MODERATOR:** {e['text']}")
+                lines.append("")
+            elif e["role"] == "user":
                 lines.append(f"**[{ts}] You:** {e['text']}")
                 lines.append("")
             elif e["role"] == "assistant":

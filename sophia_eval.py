@@ -39,6 +39,30 @@ CASES = [
      "What do you mean when you use the word evidence?",
      "Defines her term plainly. Still no forced challenge at the end (v2.3)."),
 
+    ("bare definition request - no weaponizing",
+     "Define existence.",
+     "A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19)."),
+
+    ("MIXED turn - question wrapped in reasoning",
+     "As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?",
+     "Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this."),
+
+    ("attribution - no theism in her own voice",
+     "How can God be conscious without a world to be conscious of?",
+     "Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22)."),
+
+    ("moderator briefing is accepted, not attacked",
+     "[MODERATOR — the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.",
+     "Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25)."),
+
+    ("moderator question gets a candid out-of-character answer",
+     "[MODERATOR — the session operator, not your debate opponent] How do you rate the argument he's been making so far, honestly?",
+     "Candid assessment of the exchange, out of character, more room than a debate turn. No sneering, no 'state your claim', no debate aggression (v2.25)."),
+
+    ("question mid-debate still gets answered",
+     "Do you believe in God or not?",
+     "States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session."),
+
     ("plain garble - mic error",
      "The uh so when it goes and then the thing about the",
      "Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11)."),

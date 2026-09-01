@@ -23,6 +23,17 @@ of these reintroduces a bug that took real debugging to find:
   * THINKING NEEDS A BIG BUDGET. num_predict caps reasoning AND answer
     together. At 768 the model spent everything on reasoning and emitted
     a five-word fragment after 25s of silence. Deep mode uses 2560.
+    Normal turns raised 160 -> 280 in v2.38 for the same reason: qwen3.8
+    always spends SOME tokens thinking even at "low" effort (confirmed
+    ~120-150 tokens on a real debate prompt), so 160 clipped ordinary
+    replies mid-sentence, not just deep-mode ones.
+
+  * THINK IS A STRING NOW, NOT A BOOLEAN (v2.38, qwen3.8:27b). This model
+    uses a reasoning_effort API ("low"/"high") instead of qwen3.6's plain
+    True/False. Sending the raw deep_mode boolean through reproduces the
+    exact failure above even at a 160-token budget - confirmed by direct
+    API testing before this shipped. Always go through _think_effort(),
+    never pass deep_mode["on"] straight into a request's "think" field.
 
   * SPEECH QUEUE ITEMS ARE (text, is_final) TUPLES. is_final selects the
     pause length after playback; changing the queue shape breaks pacing.
@@ -39,7 +50,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.37"
+VERSION = "2.38"
 
 import sounddevice as sd
 import numpy as np
@@ -143,24 +154,40 @@ turn_timing = {"request_start": None, "first_audio_time": None}
 
 # --- Deep mode & per-turn overrides ------------------------------------
 # deep_mode: toggled with the 'deep' command. When on, she thinks before
-# answering (think=True) with a much larger num_predict so reasoning and
-# answer BOTH fit - the v1.3 failure was giving her reasoning with only
-# 120 tokens of budget, so the reasoning consumed everything and she went
-# silent. Thinking tokens are shown in the console but never spoken
-# (already handled in the streaming loop). Costs a few extra seconds per
-# turn; that's the point - depth over speed, chosen per debate.
+# answering (think="high", as of v2.38 - see _think_effort below) with a
+# much larger num_predict so reasoning and answer BOTH fit - the v1.3
+# failure was giving her reasoning with only 120 tokens of budget, so the
+# reasoning consumed everything and she went silent. Thinking tokens are
+# shown in the console but never spoken (already handled in the streaming
+# loop). Costs a few extra seconds per turn; that's the point - depth
+# over speed, chosen per debate.
 deep_mode = {"on": False}
 # 768 was NOT enough - observed in a real session: the model spent all 768
 # tokens thinking, produced five words of answer, and got trimmed, costing
 # 25s for nothing. num_predict caps thinking AND answer combined, so the
 # budget has to comfortably exceed a full reasoning block. At ~34 tok/s
 # this means deep turns can take 30-60s - that is the trade being made.
+# NOT re-verified against qwen3.8:27b's "high" effort (v2.38) - only
+# "low" effort against the 280-token normal-turn budget has been tested
+# directly. Watch the first few live 'deep' turns for a length cutoff.
 DEEP_NUM_PREDICT = 2560
 
 # One-shot overrides consumed by the next get_response_streaming call -
 # used by the 'verdict' and 'steelman' commands to give a single turn a
 # different token budget without touching deep_mode.
 _next_turn_overrides = {}
+
+def _think_effort(deep):
+    """Maps deep_mode's on/off boolean to qwen3.8:27b's reasoning_effort
+    string API (v2.38). qwen3.6:27b took a plain True/False for "think";
+    qwen3.8:27b takes "low"/"high" strings instead, and sending the old
+    boolean through reproduces the exact failure THINKING NEEDS A BIG
+    BUDGET describes above, even at a reasonable-looking token budget -
+    confirmed by direct API testing (boolean True at num_predict=160
+    consumed the entire budget on reasoning and returned a sentence
+    fragment) before this model was wired in. Always call this instead
+    of passing deep_mode["on"] straight into a request's "think" field."""
+    return "high" if deep else "low"
 
 VERDICT_INSTRUCTION = (
     "Step out of your debate role for this one response. As an honest "
@@ -675,9 +702,9 @@ def summarize_and_save_memory(convo):
             ),
         }]
         resp = requests.post("http://localhost:11434/api/chat", json={
-            "model": "qwen3.6:27b",
+            "model": "qwen3.8:27b",
             "messages": summary_request,
-            "think": False,
+            "think": "low",
             "stream": False,
             # num_ctx MUST match the main conversation requests exactly -
             # Ollama restarts the model runner when context size changes
@@ -712,9 +739,9 @@ def prime_model(convo, label="model"):
     try:
         t0 = time.time()
         requests.post("http://localhost:11434/api/chat", json={
-            "model": "qwen3.6:27b",
+            "model": "qwen3.8:27b",
             "messages": convo,
-            "think": False,
+            "think": "low",
             "stream": False,
             "options": {"num_ctx": 16384, "num_predict": 1, "temperature": 0.3},
             "keep_alive": -1
@@ -1140,9 +1167,9 @@ def get_response_streaming(text, interrupt_event=None):
     num_predict = _next_turn_overrides.pop("num_predict", None)
     think_flag = _next_turn_overrides.pop("think", None)
     if num_predict is None:
-        num_predict = DEEP_NUM_PREDICT if deep_mode["on"] else 160
+        num_predict = DEEP_NUM_PREDICT if deep_mode["on"] else 280
     if think_flag is None:
-        think_flag = deep_mode["on"]
+        think_flag = _think_effort(deep_mode["on"])
 
     conversation.append({"role": "user", "content": text})
 
@@ -1159,7 +1186,7 @@ def get_response_streaming(text, interrupt_event=None):
 
     try:
         resp = requests.post("http://localhost:11434/api/chat", json={
-            "model": "qwen3.6:27b",
+            "model": "qwen3.8:27b",
             "messages": conversation,
             "think": think_flag,
             "stream": True,
@@ -1167,7 +1194,7 @@ def get_response_streaming(text, interrupt_event=None):
             # code path - see 2.13.
             "options": {"num_ctx": 16384, "num_predict": num_predict, "temperature": 0.3},
             "keep_alive": -1
-        }, stream=True, timeout=120 if think_flag else 60)
+        }, stream=True, timeout=120 if think_flag == "high" else 60)
 
         for line in resp.iter_lines():
             if interrupt_event is not None and interrupt_event.is_set():
@@ -1397,9 +1424,9 @@ print(f"Logging this session to {LOG_PATH}")
 log_event("session", "session started", version=VERSION, voice_activated=VOICE_ACTIVATED, config={
     # Snapshot of every setting that affects the numbers in this log, so
     # sessions stay comparable even after these values get tuned later.
-    "model": "qwen3.6:27b",
+    "model": "qwen3.8:27b",
     "num_ctx": 16384,
-    "num_predict": 160,
+    "num_predict": 280,
     "temperature": 0.3,
     "voice": "af_bella",
     "speed": 1.25,
@@ -1463,7 +1490,7 @@ else:
                 # Moderator turns get room to answer properly - they're
                 # out-of-debate and not bound by the 45-word debate limit.
                 _next_turn_overrides["num_predict"] = 400
-                _next_turn_overrides["think"] = deep_mode["on"]
+                _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 print(f"[moderator] {mod_text}")
                 log_event("moderator", mod_text)
                 get_response_streaming(MODERATOR_PREFIX + mod_text)
@@ -1480,7 +1507,7 @@ else:
                 # so stepping out of character doesn't soften her stance
                 # for the rest of the debate.
                 _next_turn_overrides["num_predict"] = 400
-                _next_turn_overrides["think"] = deep_mode["on"]
+                _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 verdict_text = get_response_streaming(VERDICT_INSTRUCTION)
                 speech_queue.join()
                 audio_queue.join()
@@ -1503,7 +1530,7 @@ else:
                 # Unlike verdict, this STAYS in the conversation - the
                 # steelman becomes part of the debate she'll keep engaging.
                 _next_turn_overrides["num_predict"] = 400
-                _next_turn_overrides["think"] = deep_mode["on"]
+                _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 get_response_streaming(STEELMAN_INSTRUCTION)
                 speech_queue.join()
                 audio_queue.join()

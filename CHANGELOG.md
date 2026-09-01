@@ -4,6 +4,65 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.38
+
+Model upgrade, per Jeff's go-ahead: qwen3.6:27b -> qwen3.8:27b (released
+Aug 2026, same 18GB weight class, dense architecture - the candidate
+flagged but not shipped in v2.33 because of its different reasoning
+API). This required empirical testing, not just wiring in a name change,
+because `ollama show qwen3.8:27b --parameters` doesn't surface the
+reasoning-control option at all (it only lists sampling parameters like
+temperature/top_p) - the only way to find out how "think" actually works
+on this model was to hit the live API directly with Jeff running the
+requests on his machine, since this environment has no path to his
+Ollama instance.
+
+**Confirmed via direct API testing (all times below are the model warm,
+i.e. excluding one-time load):**
+- `"think"` is a STRING on this model ("low"/"high"), not the boolean
+  qwen3.6 took. Sending the old boolean straight through (`think: true`)
+  at the existing num_predict=160 reproduced the EXACT v1.3 failure this
+  file's docstring already warns about: reasoning consumed the entire
+  160-token budget, `done_reason: "length"`, answer cut off mid-sentence
+  ("Even granting that the universe had a cause, the leap").
+- `"low"` effort on a trivial question: <1s total, one-sentence
+  `thinking` block. On a real debate-weight prompt: needed ~250 tokens
+  (thinking + answer combined) to finish cleanly with `done_reason:
+  "stop"`. Confirms this model always spends some tokens thinking even
+  at its lowest setting - there is no true "no thinking" mode here.
+- Added `_think_effort(deep)` to map `deep_mode`'s boolean to "low"/"high"
+  consistently everywhere a request sets "think" - the model name, the
+  four request sites, and the config-log snapshot are updated to match.
+
+**Token budget changes.** Normal-turn `num_predict`: 160 -> 280. This
+isn't a deep-mode-only concern anymore - qwen3.6 spent 100% of its
+budget on the visible answer, qwen3.8 spends a chunk of ANY turn's
+budget on invisible reasoning first, so the same 160-token budget that
+worked fine for years now clips ordinary replies too. 280 was tested
+directly against the same debate prompt that failed at 160 and finished
+cleanly with room to spare (247/280 tokens used). `DEEP_NUM_PREDICT`
+(2560) is UNCHANGED and UNVERIFIED against "high" effort specifically -
+only "low" effort was load-tested. Watch the first few live `deep`
+mode turns (and `mod`/`verdict`/`steelman` while deep mode is on, since
+they share the same override path) for a length cutoff before trusting
+it.
+
+**Latency trade-off, accepted knowingly.** Because thinking must finish
+before any answer content streams, and the streaming loop already
+correctly withholds `thinking` tokens from speech (nothing new needed
+there - it already only speaks `content`), a real debate turn now has
+roughly 2.5-3s of silence before Sophia starts talking, versus
+near-instant start on qwen3.6. Jeff chose to take this trade for the
+reasoning-quality upgrade after seeing the actual numbers, not before -
+flagging it here so a future "why does she pause now" question has an
+answer on record.
+
+**Not yet run through `sophia_eval.py` or a real live session** - same
+caveat as every prompt/model edit since v2.29, and this one changes more
+than a prompt: the model, the token budgets, and the think-value type all
+changed together. Test a full session (including `deep`, `mod`,
+`verdict`, `steelman`) before trusting this live.
+
 ## v2.37
 
 Consolidation pass, per the standing rule from v2.34/v2.35: SYSTEM_PROMPT

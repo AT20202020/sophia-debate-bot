@@ -4,6 +4,49 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.37
+
+Consolidation pass, per the standing rule from v2.34/v2.35: SYSTEM_PROMPT
+crossed its known collision-risk size threshold and the next edit should
+tighten rather than add. This is a conservative pass, not a rewrite.
+
+**What changed.** The "Be entertaining to argue with" and "You're a
+person, not a fallacy-printer" paragraphs in HOW YOU SOUND said the same
+thing twice — both existed to make one point (snark and dry wit are
+Sophia's default register, not an occasional garnish), stated once for
+snark specifically and again, almost word-for-word ("garnish... never a
+replacement" / "not an occasional garnish"), for dry wit. Merged into one
+paragraph that keeps every concrete example and both categories of
+delivery (snark AND dry wit) but states the "default, not occasional"
+instruction once. SYSTEM_PROMPT: 18,645 -> 18,512 chars (~0.7% smaller).
+
+**What did NOT change, on purpose, again.** DEBATING A CLAIM, WHEN THEY
+POSTURE, and modes 1-4 are untouched, same reasoning as v2.35: that's
+where the "attack the move, never the person" instruction shows up three
+separate times (DEBATING A CLAIM, WHEN THEY POSTURE, HOW YOU SOUND), and
+per the module docstring's own design rule (SYSTEM_PROMPT IS A ROUTING
+PROCEDURE, NOT A RULE PILE — each mode owns the turn it applies to and is
+meant to be self-contained), that's not duplication to cut, it's the
+mode-routing design working as intended. Collapsing it into one
+cross-referenced rule is exactly the kind of change that caused the
+v2.11/v2.19 collisions v2.21 had to fix. EVIDENTIALISM CUTS BOTH WAYS and
+REFERENCE: THE BITE MODEL got their tightening pass already in v2.35 and
+show no further obvious redundancy on this read.
+
+Net effect is modest by design — the actual goal here was finding one
+genuine, safe duplication and removing it without touching
+battle-tested wording, not hitting a target character count. I have no
+way to run this bot or test a live session from this environment, same
+constraint as every prompt edit since v2.29. **Run `sophia_eval.py`
+before trusting this in a live debate** — it still hasn't been run since
+v2.21, and this is now the fifth prompt edit since then (v2.31, v2.32,
+v2.34, v2.35, this one) with zero regression coverage across all of them.
+
+**Resolved from v2.36:** Jeff reviewed the "should I take advice from you
+or the Bible" exchange and confirmed Sophia's "Take mine" answer was the
+right call — not a design problem, no prompt change needed. Logged here
+so it doesn't get re-flagged as an open question later.
+
 ## v2.36
 
 Transcript review found a clean, well-evidenced bug: a genuinely garbled

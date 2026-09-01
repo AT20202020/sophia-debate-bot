@@ -3,6 +3,12 @@
 logs/
 memory/
 
+# Optional local GPU transcription server - whisper-server.exe, its DLLs,
+# and the ggml model are large binaries specific to each machine's build.
+# Sophia works fine without this folder (automatic CPU fallback via
+# faster-whisper) - see README's "Optional GPU transcription" section.
+whisper-server/
+
 # Python
 __pycache__/
 *.pyc
@@ -10,3 +16,6 @@ __pycache__/
 # Local environment
 sophia-env/
 *.env
+
+# Backup copies made while editing files - not part of the project
+*.bak

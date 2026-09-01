@@ -7,7 +7,7 @@ mic (push-to-talk) → faster-whisper (STT) → Ollama (LLM, streaming)
                    → Kokoro (TTS, sentence-by-sentence) → speakers
 ```
 
-Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Typical response latency is ~2.6s from end of speech to first audio on an RX 7900 XTX running qwen3.6:27b.
+Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Typical response latency is ~2.6s from end of speech to first audio on an RX 7900 XTX running qwen3.8:27b.
 
 ## Features
 
@@ -22,7 +22,7 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
   - `verdict` — she steps out of character and coaches: your strongest point, weakest moment, and what a sharper version of your argument would look like
   - `steelman` — she rebuilds the strongest version of your argument, then attacks *that*
 - **Structured JSONL logging** — full transcripts plus per-turn diagnostics (time-to-first-token, time-to-first-audio, Ollama eval counters, model-reload detection, transcription chunk timing) for later analysis.
-- **Optional GPU transcription** — auto-detects a local [whisper.cpp](https://github.com/ggml-org/whisper.cpp) server (e.g. the [whisper.cpp-rocm](https://github.com/lemonade-sdk/whisper.cpp-rocm) builds for AMD GPUs) and falls back to CPU transparently.
+- **Optional GPU transcription** — auto-detects a local [whisper.cpp](https://github.com/ggml-org/whisper.cpp) server built with Vulkan support (works on AMD/NVIDIA/Intel GPUs with Vulkan drivers, not just one vendor) and falls back to CPU transparently. `Start Sophia.bat` auto-starts it for you if it's set up - see below.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
 **Software, in order:**
 
 1. **Python ≥3.10 and <3.13** — this is a hard requirement of the `kokoro` package, not a suggestion; 3.13 will fail to install it. 3.12 is what this project is tested on.
-2. **[Ollama](https://ollama.com)** installed and able to run, with a model pulled (default: `qwen3.6:27b`).
+2. **[Ollama](https://ollama.com)** installed and able to run, with a model pulled (default: `qwen3.8:27b`).
 3. **[espeak-ng](https://github.com/espeak-ng/espeak-ng/releases)** — required by Kokoro for phonemization of out-of-dictionary words. On Windows: download the latest `.msi` from the releases page and run it. On Debian/Ubuntu: `sudo apt install espeak-ng`.
 4. **Linux only:** PortAudio for the mic/speaker streams — `sudo apt install libportaudio2`. (Windows wheels bundle it.)
 
@@ -51,13 +51,24 @@ py -3.12 -m venv sophia-env
 .\sophia-env\Scripts\python.exe -m pip install -r requirements.txt
 
 # 3. Pull the model
-ollama pull qwen3.6:27b
+ollama pull qwen3.8:27b
 
 # 4. Run
 .\sophia-env\Scripts\python.exe debate_voice.py
 ```
 
 Or use `Start Sophia.bat` (edit `VENV_PYTHON` at the top to point at your venv) — it checks that Ollama is up, starts it if not, and launches the bot.
+
+### Optional: GPU-accelerated transcription
+
+By default Sophia transcribes on CPU via `faster-whisper` - works fine, no setup needed. For faster transcription on your GPU:
+
+1. Build [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with Vulkan support (works across AMD/NVIDIA/Intel, not vendor-specific).
+2. Create a `whisper-server` folder next to `debate_voice.py` and place in it:
+   - `whisper-server.exe`
+   - `ggml.dll`, `ggml-base.dll`, `ggml-cpu.dll`, `ggml-vulkan.dll`, `whisper.dll`
+   - the model: [`ggml-small.en.bin`](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin)
+3. That's it - `Start Sophia.bat` checks for it on launch and starts it automatically on `127.0.0.1:8090`. This folder is gitignored (large, machine-specific binaries); everyone else just gets the CPU fallback.
 
 First launch takes a while: Whisper and Kokoro load (downloading their models if it's the very first run), then the system prompt is primed into Ollama's KV cache so the first real turn is fast.
 
@@ -74,7 +85,7 @@ Version history is in [CHANGELOG.md](CHANGELOG.md), including the reasoning behi
 
 ## Performance notes (hard-won)
 
-- **Pin `num_ctx` identically on every request.** Ollama restarts its model runner when a request's context size differs from the loaded runner's — a full ~13s reload. This bot pins `num_ctx: 8192` everywhere, including warm-up and memory-summary calls. If you add a new Ollama call, pin it there too.
+- **Pin `num_ctx` identically on every request.** Ollama restarts its model runner when a request's context size differs from the loaded runner's — a full ~13s reload. This bot pins `num_ctx: 16384` everywhere, including warm-up and memory-summary calls. If you add a new Ollama call, pin it there too.
 - **Prime the real system prompt at launch.** Warming the model with a bare "hi" loads weights but leaves the system prompt unevaluated; the first real turn then pays several seconds of prompt processing. `prime_model()` sends the actual conversation with `num_predict: 1` during the loading phase.
 - **`keep_alive: -1`** on every request so the model never unloads from VRAM between turns.
 - **Thinking needs budget.** `num_predict` caps reasoning *and* answer together. At 768 the model spent the whole budget reasoning and emitted a five-word fragment after 25s of silence. Deep mode uses 2560.

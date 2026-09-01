@@ -4,6 +4,288 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.36
+
+Transcript review found a clean, well-evidenced bug: a genuinely garbled
+technical term got called "word salad" - one of the four phrases Mode 3
+explicitly bans for broken-syntax turns ("Do NOT call it gibberish, word
+salad, noise, or performance"). The user said "...therefore the Phinians
+are needed," and a moderator correction two turns later confirmed it was
+meant to be "definiens" (a real logic/philosophy-of-language term - the
+defining part of a definition, paired with "definiendum," the term being
+defined). This is the EXACT pattern the prompt already has named examples
+for ("aquatic traps" for "Socratic traps," "truth Craig" for "truth
+criteria") - a nonsense homophone of a real term, not incoherence - so
+Sophia should have treated it as a transcription artifact per READING
+WHAT THEY SAY, not called it word salad per the Mode 3 ban she violated
+anyway.
+
+Root cause and fix follow the project's own established playbook (see
+v2.18 in windows-deps memory: "add terms here whenever a new mishearing
+pattern shows up in the logs, it's the cheapest fix available"): Whisper
+never had a chance to transcribe "definiens" correctly because it wasn't
+in DOMAIN_VOCAB_PROMPT. Added definiens, definiendum, analogical,
+Bayesian, posterior probability, fine-tuning argument, multiverse,
+Occam's razor, emergence, and begging the question - all terms that came
+up correctly in the SAME session's Bayesian fine-tuning exchange (so
+already surviving transcription fine) or narrowly missed (definiens),
+added preemptively since they're all live in the current debate topics.
+
+**Did not touch SYSTEM_PROMPT for this.** The rule that was violated
+already exists and is already explicit (word salad is literally named as
+banned) - this reads as one LLM compliance slip on a single turn, not a
+missing rule, and we just did a consolidation pass last version. Fixing
+it at the transcription layer (so the mangled term never reaches the
+model in the first place) is both the cheaper fix and doesn't add more
+weight to a prompt that's already flagged as oversized. If "word salad"
+or similar shows up again on a DIFFERENT term (i.e., not fixable by
+vocabulary alone), that's the signal the prompt-level rule itself needs
+reinforcement, not just the vocab list.
+
+**Also observed, not fixed - a design question, not a bug:** early in
+this session a user said "I'm scared" about death and asked what happens
+after - Sophia answered with real sensitivity ("fear thrives on certainty
+about the worst case; uncertainty leaves room for peace"), which is good.
+But the immediate follow-up, "should I take advice from you or the
+Bible," got "Take mine" - confident position-holding is by design, but
+telling someone to take her advice over a religious text on a personal/
+existential question is a step further than debating a claim. Worth
+Jeff's judgment call on whether that's the intended posture for
+Sophia specifically on personal-guidance questions (as opposed to
+debate-claim questions), not something changed unilaterally here.
+
+## v2.35
+
+Cleanup pass on SYSTEM_PROMPT, in response to the size flag raised in
+v2.34. Led with a real bug fix, not just tightening:
+
+**BUG FIX: mode-routing typo.** The MIXED-turn tie-breaker paragraph said
+"a turn that asserts and asks nothing at all routes to mode 4" - mode 4
+is the MODERATOR prefix check, which has nothing to do with that
+sentence. It should say mode 5 (THEY MADE A CLAIM OR ARGUMENT), and now
+does. Unknown how long this has been wrong or whether it ever caused a
+visible misroute, but it's exactly the kind of thing sophia_eval.py
+should have caught if it had been run since v2.21.
+
+**STRUCTURAL FIX: HOW YOU SOUND / WHEN THEY POSTURE scope.** Both
+sections physically sat under "5. THEY MADE A CLAIM OR ARGUMENT —
+everything below applies," which read as scoping them to mode 5 only -
+wrong, since HOW YOU SOUND's delivery rules (sentence/word limits, no
+markdown, spoken aloud) obviously apply to a mode-1 answer too, and mode
+4's own text already implies as much (it grants an explicit exception:
+"more room than a debate turn allows"). Reworded the mode-5 header to
+scope "everything below" to just DEBATING A CLAIM, and added an explicit
+parenthetical to the HOW YOU SOUND heading itself: "(every mode above,
+not just mode 5 — delivery, not content)."
+
+**PHRASING FIX: two self-referential lines.** "Be entertaining to argue
+with — more than you have been" and "...reaching for a lot more than you
+have been" (both from v2.32) compare her to a "before" state a fresh
+session has no memory of - meaningless as literal instruction text. Both
+now state the absolute target instead of a relative delta; the second
+also deduped a repeated "reach for it often" that had gotten stated
+twice in the same paragraph.
+
+**Tightened prose in EVIDENTIALISM CUTS BOTH WAYS and REFERENCE: THE BITE
+MODEL** (the two newest, least battle-tested sections) - no behavior
+change, just fewer words for the same content.
+
+**What did NOT change, on purpose:** DEBATING A CLAIM, WHEN THEY POSTURE,
+and modes 1-4 are essentially untouched. That's most of the prompt's
+bulk, and nearly every sentence in it is exact wording from a specific
+documented bug fix (v2.3/v2.16/v2.17/v2.19/v2.22/v2.25 - see
+sophia-persona-tuning memory). Rewriting those for brevity risks
+reintroducing a bug that already took real debugging to fix, and I have
+no way to test a rewrite against a live session. Net result: SYSTEM_PROMPT
+went from 18,930 to 18,645 chars (~1.5% smaller) - a real but modest
+reduction. The actual risk-reduction here is the bug fix and the
+scoping fix, not the character count; if Jeff wants a substantially
+smaller prompt, that's a real behavior-risk trade-off he should decide on
+explicitly, not something to do unilaterally on a live, untested system.
+
+**Running `sophia_eval.py` now matters more than ever** - this version
+touches the mode-routing logic directly (the bug fix), which is exactly
+what that eval suite exists to catch regressions in, and it still hasn't
+been run since v2.21.
+
+## v2.34
+
+Jeff uploaded Freedom of Mind Resource Center's "BITE Model / Influence
+Continuum" handout (Steven Hassan's framework) and asked to give it to
+Sophia. Sophia has no retrieval/RAG system - a PDF can't be "handed" to
+her at runtime, so the only lever is distilling the substantive content
+into SYSTEM_PROMPT itself. Added a REFERENCE: THE BITE MODEL block right
+after EVIDENTIALISM CUTS BOTH WAYS (same topic area - this is the
+concrete follow-through on the "cult" exchanges flagged as too vague
+earlier this session): the four BITE categories (Behavior, Information,
+Thought, Emotional control) with a handful of concrete criteria from each,
+so she can name specific mechanisms ("forbids criticism of leadership,"
+"phobia indoctrination about leaving") instead of gesturing at "coercive
+control and isolation." Explicitly attributed to Hassan by name and
+cross-referenced back to EVIDENTIALISM CUTS BOTH WAYS, so she treats it
+as one specific named framework rather than "the" sociological
+definition - the marketing/course-enrollment content in the PDF itself
+was left out as irrelevant to debate reasoning.
+
+**PROMPT SIZE FLAG - read before adding anything else.** SYSTEM_PROMPT is
+now 18,930 characters. For reference: v2.19 hit its first "if this grows
+past ~13k, consolidate" warning; v2.21 consolidated 14.4k down to 8.9k
+specifically to stop rule collisions. Three edits this session (v2.31
+evidentialism, v2.32 spice, v2.34 this one) have more than doubled it
+past that consolidation point without a matching cleanup pass, and
+`sophia_eval.py` has NOT been run since v2.21 - meaning there is currently
+zero regression coverage over a prompt that just grew past the exact size
+that caused collisions twice before. Strong recommendation: run the eval
+suite before any further additions, and treat a fourth prompt edit as the
+signal to consolidate rather than patch again, per the standing rule in
+the module docstring.
+
+## v2.33
+
+Jeff asked for "more brain power." That's two different levers with very
+different risk profiles, so only the safe one shipped this version.
+
+CONTEXT WINDOW DOUBLED: num_ctx 8192 -> 16384 in all 5 pinned spots
+(memory-summary request, prime_model, the main turn request + its
+comment, and the session-log config snapshot - see the module docstring
+for why every one of these has to match exactly or Ollama reloads its
+model runner, ~13-18s, on the next request). This gives her roughly
+double the conversational memory span before a 'new' reset is needed.
+Low risk: the current 18GB qwen3.6:27b already runs with ~6GB of VRAM
+headroom on Jeff's 24GB card at 8192, and KV cache growth from doubling
+context is modest relative to that - if it doesn't fit, Ollama fails to
+load with a clear error rather than corrupting anything, so worst case is
+an easy revert.
+
+MODEL SWAP: RESEARCHED, NOT SHIPPED. Jeff's other ask, a smarter model,
+turned up a real trap: the obvious "bigger" option in the same line,
+qwen3.6:35b-a3b, is actually a Mixture-of-Experts model (36B total, only
+3B active per token) that scores WORSE on reasoning (32 vs 38 on the
+Artificial Analysis Intelligence Index) despite being "bigger" - it's a
+speed trade (124 tok/s vs 50 tok/s), not a quality upgrade, so it's the
+wrong move here. The real candidate is qwen3.8:27b, released this month
+(Aug 2026): same 18GB/24GB-card weight class as what she runs now, dense
+architecture, a genuine successor with real training improvements
+(independent benchmarks still pending - it's brand new). The blocker:
+it uses a DIFFERENT reasoning-control API than qwen3.6 - a `reasoning_effort`
+enum, not the `"think": true/false` boolean Sophia's code currently
+sends - and defaults to "xhigh" effort, which in real-world tests took
+21 minutes and 22,000+ reasoning tokens for a trivial request. Wiring in
+the model name without also correctly setting reasoning_effort on every
+request would reproduce the exact v1.3 bug (reasoning eating the entire
+turn's token budget, going silent for a long time), just with a
+different model. Needs Jeff to `ollama pull qwen3.8:27b` and share what
+`ollama show qwen3.8:27b --parameters` (or similar) actually accepts for
+reasoning_effort before this gets wired into the live request options -
+guessing the enum values on a live voice pipeline is not worth the risk.
+
+## v2.32
+
+More spice, on request. v2.28 added snark bounded by "if two turns in a
+row have a quip, the third shouldn't" and flagged in project notes as
+untested - Jeff's first correction, as anticipated, was that it landed
+too tame. Loosened the "Be entertaining to argue with" section in
+SYSTEM_PROMPT: snark is now the default register for a deserved error
+rather than an occasional garnish, back-to-back quips are explicitly
+fine when both turns earn one (the old two-in-a-row cap is gone - a
+stretch of ALL-flat turns now reads as underplaying it, not discipline),
+and between two equally precise turns the spicier one wins. Hard limits
+unchanged and restated explicitly ("spicier is not meaner"): snark still
+rides on top of the argument and never replaces it, still aimed at the
+move and never the person. This is a dial-up of intensity/frequency, not
+a removal of the surgeon-not-brawler guardrails Jeff set from the start.
+
+**Not yet run through `sophia_eval.py` or tested live** - same caveat as
+v2.31, no way to run the bot from this session. Ask Jeff whether this
+reads as fun-spicy or as attacking-the-person once he's tried it; that's
+the failure mode to watch for, per the tension already on record between
+being sharp and staying likeable.
+
+## v2.31
+
+Persona-accuracy fix, from a transcript review (not a code bug).
+
+EVIDENTIALISM CUTS BOTH WAYS. Jeff flagged a transcript where Sophia
+defended the historicity of Jesus and the criterion of embarrassment
+against an opponent, and asked me to fact-check the substance. The
+underlying claims held up - historicity of Jesus really is the
+mainstream position even among secular/atheist historians (Ehrman wrote
+a whole book against mythicism), and the criterion of embarrassment is a
+real, named tool (Schmiedel 1899, popularized by Meier 1991), not a
+Christian invention. But Sophia stated both as settled/beyond dispute
+and called pushback "false," when the criterion of embarrassment
+specifically has genuine published methodological critics (how
+subjective "embarrassing" is, how rare clean cases are). Jeff's reaction:
+"I would expect her to be more skeptical about such a claim" - fair,
+since her own stated epistemology is evidentialist (SYSTEM_PROMPT already
+says beliefs should be proportioned to evidence), but that standard was
+only ever being applied to opponents' claims, never to her own supporting
+arguments. New paragraph added right after the epistemology paragraph:
+when she leans on a claim with genuine live methodological disagreement
+within its field, she states the caveat as a flat fact alongside the
+claim, not as hedging (the no-hedging rule elsewhere is about wishy-washy
+delivery, not about omitting real caveats). Generalized beyond the Jesus
+case on purpose - same rule should apply the next time she over-asserts
+a contested methodology anywhere in philosophy of religion.
+
+**Not yet run through `sophia_eval.py`** - per the standing rule in the
+module docstring, that should happen after any SYSTEM_PROMPT edit, and I
+have no way to run it myself from this session (no execution access to
+Jeff's Windows/Ollama environment). Ask Jeff to run it and report back
+before assuming this landed cleanly.
+
+## v2.30
+
+Playback reliability fix, part 2 (v2.29 uncovered this immediately on
+Jeff's hardware).
+
+WASAPI SAMPLE RATE MISMATCH. v2.29 switched the output stream to a WASAPI
+device, which fixed the MME staleness bug but immediately hit a different
+wall: `Error opening OutputStream: Invalid sample rate [PaErrorCode
+-9997]`. WASAPI shared-mode streams reject a samplerate that doesn't
+match the interface's currently configured mixer rate, and Jeff's
+interface (a ZOOM P4, picked as the WASAPI default output) runs its own
+44.1/48kHz mix format while Kokoro always outputs 24kHz - MME used to
+paper over this by silently resampling, which is also why v2.29's
+underlying bug was invisible until the device switch. Fix: `_open_output_stream()`
+now passes `sd.WasapiSettings(auto_convert=True)`, which tells the WASAPI
+backend to insert its own sample-rate/channel converter instead of
+rejecting the open, and tries three progressively looser fallbacks
+(WASAPI+auto_convert -> WASAPI device with no extra settings -> PortAudio's
+bare default) so a future device quirk degrades instead of going silent
+for the whole session.
+
+Also: the very first stream open in `playback_worker` (before the main
+loop, so outside its per-chunk try/except) was unguarded - if it threw,
+the thread died with a raw traceback printed mid-prompt and audio stayed
+off for the rest of the session with no clear explanation. This is
+exactly what happened when v2.29 shipped: the WASAPI device open at
+24000Hz threw immediately, killing the thread before the loop's recovery
+logic ever got a chance to run. Now that initial open is wrapped too, so
+a total failure across all three fallback tiers prints one clear line
+and exits instead of an unhandled traceback.
+
+## v2.29
+
+Playback reliability fix.
+
+WASAPI OUTPUT DEVICE INSTEAD OF MME DEFAULT. Writes started failing mid-
+session with `PaErrorCode -9999: Unanticipated host error ... There is no
+driver installed on your system. [MME error 6]`, and every chunk after
+the first failure failed the same way, going silent for the rest of the
+session. Cause: `sd.OutputStream()` with no `device=` uses PortAudio's
+MME host API default, which caches its device index once and never
+re-resolves it - if Windows's real default output changes afterward
+(headset reconnect, HDMI monitor power cycle, another app grabbing
+exclusive access), the cached index goes stale but nothing reports that.
+WASAPI resolves the real default device at stream-open time instead, so
+`_pick_output_device()` now picks the WASAPI default output device at
+startup and falls back to PortAudio's own default if WASAPI isn't
+available. Separately, `playback_worker` now closes and reopens the
+stream on any write failure instead of just skipping the chunk and
+reusing the same (possibly wedged) stream - that reuse is what turned one
+failure into permanent silence before.
+
 ## v2.28
 
 Speed work driven by measurement, plus a personality change.

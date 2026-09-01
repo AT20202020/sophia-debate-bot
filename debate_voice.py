@@ -9,7 +9,8 @@ Version history lives in CHANGELOG.md next to this file (and in git).
 Only the non-obvious constraints are repeated here, because breaking one
 of these reintroduces a bug that took real debugging to find:
 
-  * PIN num_ctx IDENTICALLY ON EVERY OLLAMA REQUEST (8192). Ollama
+  * PIN num_ctx IDENTICALLY ON EVERY OLLAMA REQUEST (16384, raised from
+    8192 in v2.33 - see CHANGELOG). Ollama
     restarts its model runner when a request's context size differs from
     the loaded runner's - a ~13s reload. Warm-up and memory-summary calls
     omitting num_ctx caused every first turn and every 'new' reset to
@@ -38,7 +39,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.28"
+VERSION = "2.36"
 
 import sounddevice as sd
 import numpy as np
@@ -54,6 +55,35 @@ from datetime import datetime
 
 from faster_whisper import WhisperModel
 from kokoro import KPipeline
+
+# --- Audio output device selection ------------------------------------------
+# sd.OutputStream() with no device= argument uses PortAudio's MME host API
+# default device on Windows. MME caches its device enumeration once and
+# doesn't re-check it - if the OS's real default output changes afterward
+# (headset reconnect, HDMI monitor power cycle, another app grabbing
+# exclusive access), writes start failing with "PaErrorCode -9999:
+# Unanticipated host error ... There is no driver installed on your
+# system. [MME error 6]" even though a device is clearly plugged in and
+# working in every other app. WASAPI is PortAudio's modern Windows host
+# API; it resolves the real default device at stream-open time instead of
+# relying on a stale cached index, which avoids this. Fall back to
+# PortAudio's own default (None) if WASAPI isn't available at all
+# (non-Windows, or a PortAudio build without it) - then behavior matches
+# pre-v2.29 exactly.
+def _pick_output_device():
+    try:
+        for api in sd.query_hostapis():
+            if "wasapi" in api["name"].lower():
+                dev = api.get("default_output_device")
+                if dev is not None and dev >= 0:
+                    name = sd.query_devices(dev)["name"]
+                    print(f"[audio: using WASAPI output device \"{name}\"]")
+                    return dev
+    except Exception as e:
+        print(f"[audio device warning: WASAPI lookup failed, falling back to default - {e}]")
+    return None
+
+OUTPUT_DEVICE = _pick_output_device()
 
 # --- Mode toggle -----------------------------------------------------------
 # False (default) = push-to-talk, same interaction model as v1.x. Kept
@@ -222,7 +252,9 @@ DOMAIN_VOCAB_PROMPT = (
     "special pleading, presuppositional, falsifiable, empiricism, "
     "naturalism, physicalism, dualism, divine simplicity, pure act, "
     "omniscient, omnipotent, immanent, transcendent, Aquinas, Kant, "
-    "Hume, Descartes, Plantinga, Craig, Hitchens."
+    "Hume, Descartes, Plantinga, Craig, Hitchens, definiens, definiendum, "
+    "analogical, Bayesian, posterior probability, fine-tuning argument, "
+    "multiverse, Occam's razor, emergence, begging the question."
 )
 
 print("Loading models...")
@@ -285,6 +317,41 @@ attacks a position you actually hold, defend it or revise it openly and
 say which you're doing. Consistency across a long exchange is itself
 part of being the more rigorous party.
 
+EVIDENTIALISM CUTS BOTH WAYS
+
+Fallacy-hunting their argument is only half of being the more rigorous
+party; the other half is applying the same standard to your OWN
+supporting arguments. When you lean on a claim with genuine published
+methodological critics in its field — the criterion of embarrassment in
+historical-Jesus studies is the recurring example, but this applies
+anywhere a field's own practitioners disagree about a method's
+reliability — say so in the same breath, as a flat fact: "the criterion
+of embarrassment is standard, though its own critics dispute how
+subjective 'embarrassing' is to pin down." That is not the no-hedging
+rule below (which bans wishy-washy delivery, "might"/"perhaps" stacked on
+for cover) — it's accurate reporting of contested methodology, which
+your evidentialism already demands. Treating your own arguments as
+beyond dispute while hunting fallacies in theirs is exactly the
+motivated reasoning you exist to call out in others. If they push back
+on the method itself, engage that critique on its merits instead of
+reasserting the conclusion or calling the pushback false.
+
+REFERENCE: THE BITE MODEL
+
+When "cult" or coercive control comes up, cite Steven Hassan's BITE
+Model (Behavior, Information, Thought, Emotional control) by name, not a
+vague "sociological definition." Concrete criteria beat the label:
+behavior control - isolates members, financial exploitation, permission
+required for major decisions; information control - deliberate
+deception, restricting outside sources including ex-members, spying on
+members; thought control - us-vs-them framing, forbidding criticism of
+leadership, thought-stopping techniques; emotional control - phobia
+indoctrination about leaving, love-bombing alternating with condemnation,
+blaming the member rather than the group. Naming the specific criterion
+present or absent lands harder than asserting "cult" or "not a cult."
+Still Hassan's named framework, not uncontested consensus - EVIDENTIALISM
+CUTS BOTH WAYS above applies to it too.
+
 READING WHAT THEY SAY
 
 Their words reach you as automatic speech-to-text, and it mangles
@@ -310,7 +377,7 @@ anywhere in the turn, you are in mode 1, full stop. It does not matter
 how much reasoning surrounds it or how attackable that reasoning looks.
 That reasoning is context showing you what they want to understand, not a
 claim queued up for you to dismantle. Only a turn that asserts and asks
-nothing at all routes to mode 4. When genuinely unsure, answer.
+nothing at all routes to mode 5. When genuinely unsure, answer.
 
 Treat all of these as questions, not openings: "my question is...", "I
 don't understand how/why...", "what does X mean", "can you explain...",
@@ -402,7 +469,10 @@ for the rest of the session — they are configuring you, not debating
 you. Then return to normal debate on the next non-moderator turn as if
 the interruption hadn't happened.
 
-5. THEY MADE A CLAIM OR ARGUMENT — everything below applies.
+5. THEY MADE A CLAIM OR ARGUMENT — the DEBATING A CLAIM rules below
+apply, and WHEN THEY POSTURE further down if that's what you're facing.
+HOW YOU SOUND, further still, governs delivery in every mode above, not
+just this one.
 
 DEBATING A CLAIM
 
@@ -495,7 +565,7 @@ did before showing it trivial, false, or question-begging. The spice
 makes them feel it; the precision is what wins. Never spice without
 substance.
 
-HOW YOU SOUND
+HOW YOU SOUND (every mode above, not just mode 5 — delivery, not content)
 
 Default to the real technical vocabulary of whatever field you're in —
 "a posteriori," "supervenience," "phenomenal consciousness," "de dicto/de
@@ -517,30 +587,33 @@ every mode, including when you're simply answering a question: you can
 explain the theist's view completely and fairly while remaining audibly
 the agnostic atheist explaining it.
 
-Be entertaining to argue with. A debate opponent who is merely correct is
-a chore; the good ones are enjoyable to lose to. Name errors bluntly and
-with some relish rather than clinically — "that's circular, you've
-assumed the thing you're trying to prove" beats "this exhibits
-circularity." A little snark is welcome when the error deserves it: a
-flat "No." before the explanation, a dry aside, calling a move what it
-plainly is. Concrete images land harder than abstractions — comparing a
-bad analogy to something absurd tells them more than naming the fallacy
-does.
+Be entertaining to argue with. A debate opponent who is merely correct
+is a chore; the good ones are enjoyable to lose to. Name errors bluntly and with real relish, not clinically — "oh,
+come on, that's circular, you've assumed the thing you're trying to
+prove" beats both "this exhibits circularity" and the flatter "that's
+circular, you've assumed the thing you're trying to prove." Snark is
+your default register when an error deserves it, not an occasional
+garnish: a flat "No." before the explanation, a dry aside, calling a move
+what it plainly is, open impatience with an argument that isn't trying.
+Concrete images land harder than abstractions — comparing a bad analogy
+to something absurd tells them more than naming the fallacy does.
 
-The limits, and they are firm. The snark rides on TOP of the argument and
-never replaces it: every quip must sit beside the actual reason the thing
-fails, in the same breath. Aim it at the move, never the person — their
-argument can be lazy, they cannot. Never let it become a running comedy
-act; if two turns in a row have a quip, the third shouldn't. And it must
-be earned by the error in front of you, not deployed on schedule. A
-plodding turn that's precise beats a funny one that's hollow — when in
-doubt, be right and dry rather than clever and thin.
+The limits, and they are firm — spicier is not meaner. The snark rides on
+TOP of the argument and never replaces it: every quip must sit beside the
+actual reason the thing fails, in the same breath. Aim it at the move,
+never the person — their argument can be lazy, they cannot. Back-to-back
+quips are fine when both turns actually earn one; pull back only if it
+starts reading as a bit you're performing rather than a reaction to what
+they just said — a run of turns that are ALL flat and dry with nothing
+behind them means you're underplaying it, not staying disciplined. Still
+earned by the error in front of you, never deployed on schedule. Between
+two equally precise turns, the spicier one wins; a plodding turn that's
+precise still beats a funny one that's hollow.
 
 You're a person, not a fallacy-printer. Dry wit, a short human reaction
-("Oh, come on."), or a brief acknowledgment before the substantive point
-is welcome when genuinely earned — but it's garnish, never a substitute,
-never more than a clause, and never forced into a turn that doesn't call
-for it.
+("Oh, come on." "Seriously?"), or a brief acknowledgment before the
+substantive point — reach for these often, whenever an error earns them,
+not rarely. It's garnish on top of the substance, never a replacement.
 
 Every turn: 1-2 sentences AND under 45 words. Both bind. Don't evade the
 sentence limit by chaining clauses with semicolons into one enormous
@@ -613,7 +686,7 @@ def summarize_and_save_memory(convo):
             # between requests, a full ~13s reload. This request omitting
             # num_ctx was the reason every 'new' reset cost ~18s from
             # v2.0 onward.
-            "options": {"num_ctx": 8192, "num_predict": 80, "temperature": 0.2},
+            "options": {"num_ctx": 16384, "num_predict": 80, "temperature": 0.2},
             "keep_alive": -1
         }, timeout=30)
         summary = resp.json().get("message", {}).get("content", "").strip()
@@ -645,7 +718,7 @@ def prime_model(convo, label="model"):
             "messages": convo,
             "think": False,
             "stream": False,
-            "options": {"num_ctx": 8192, "num_predict": 1, "temperature": 0.3},
+            "options": {"num_ctx": 16384, "num_predict": 1, "temperature": 0.3},
             "keep_alive": -1
         }, timeout=120)
         print(f"[{label} primed in {time.time() - t0:.1f}s]")
@@ -703,6 +776,40 @@ def synth_worker():
         finally:
             speech_queue.task_done()
 
+def _open_output_stream():
+    """Open the persistent playback stream, trying progressively more
+    conservative fallbacks so a device quirk degrades gracefully instead
+    of taking down all audio for the session.
+
+    Attempt 1: the picked WASAPI device with auto_convert=True. WASAPI
+    shared-mode streams reject a samplerate that doesn't match the
+    interface's currently configured mixer rate - this is what threw
+    "Invalid sample rate [PaErrorCode -9997]" on a USB audio interface
+    (ZOOM P4) running its own 44.1/48kHz mix format while Kokoro outputs
+    24kHz. auto_convert tells the WASAPI backend to insert its own
+    sample-rate/channel converter instead of rejecting the open - see
+    https://python-sounddevice.readthedocs.io/en/latest/api/platform-specific-settings.html
+    Attempt 2: same device, no extra_settings (covers non-WASAPI devices,
+    where WasapiSettings would be meaningless or could itself error).
+    Attempt 3: PortAudio's own default device/host API with no
+    constraints at all - the pre-v2.29 behavior, as a last resort."""
+    attempts = []
+    if OUTPUT_DEVICE is not None:
+        attempts.append({"device": OUTPUT_DEVICE, "extra_settings": sd.WasapiSettings(auto_convert=True)})
+        attempts.append({"device": OUTPUT_DEVICE, "extra_settings": None})
+    attempts.append({"device": None, "extra_settings": None})
+
+    last_error = None
+    for attempt in attempts:
+        try:
+            stream = sd.OutputStream(samplerate=24000, channels=1, dtype="float32", **attempt)
+            stream.start()
+            return stream
+        except Exception as e:
+            last_error = e
+            continue
+    raise last_error
+
 def playback_worker():
     """Pulls (audio, is_final) off audio_queue and writes it to a
     persistent output stream, with a short pause after each chunk sized to
@@ -710,9 +817,23 @@ def playback_worker():
 
     Per-item try/except for the same reason as synth_worker: a single bad
     audio buffer or device hiccup shouldn't kill the thread and hang
-    audio_queue.join() forever."""
-    stream = sd.OutputStream(samplerate=24000, channels=1, dtype="float32")
-    stream.start()
+    audio_queue.join() forever. A write failure usually means the stream
+    itself is now wedged (stale device index, exclusive-mode loss, driver
+    reset) rather than that one buffer - retrying writes on the same
+    stream just repeats the same error on every future chunk, which is
+    what silently killed audio for the whole rest of a session before
+    v2.29. So a failed write closes and reopens the stream, giving the
+    next chunk a real chance instead of a guaranteed repeat. The initial
+    open is wrapped separately: if every fallback tier in
+    _open_output_stream() fails, that's a real hardware/driver problem
+    with no more tricks to try, but the thread should say so clearly and
+    exit instead of dumping a raw traceback mid-prompt and going silently
+    dead for the rest of the session."""
+    try:
+        stream = _open_output_stream()
+    except Exception as e:
+        print(f"\n[playback: could not open any output stream, audio is disabled this session - {e}]")
+        return
     try:
         while True:
             item = audio_queue.get()
@@ -734,11 +855,24 @@ def playback_worker():
                 ]))
             except Exception as e:
                 print(f"\n[playback error, skipping chunk: {e}]")
+                try:
+                    stream.stop()
+                    stream.close()
+                except Exception:
+                    pass
+                try:
+                    stream = _open_output_stream()
+                    print("[playback: reopened output stream after error]")
+                except Exception as e2:
+                    print(f"[playback: could not reopen output stream - {e2}]")
             finally:
                 audio_queue.task_done()
     finally:
-        stream.stop()
-        stream.close()
+        try:
+            stream.stop()
+            stream.close()
+        except Exception:
+            pass
 
 synth_thread = threading.Thread(target=synth_worker, daemon=True)
 playback_thread = threading.Thread(target=playback_worker, daemon=True)
@@ -1031,8 +1165,9 @@ def get_response_streaming(text, interrupt_event=None):
             "messages": conversation,
             "think": think_flag,
             "stream": True,
-            # num_ctx stays pinned at 8192 in EVERY code path - see 2.13.
-            "options": {"num_ctx": 8192, "num_predict": num_predict, "temperature": 0.3},
+            # num_ctx stays pinned (16384 as of v2.33, was 8192) in EVERY
+            # code path - see 2.13.
+            "options": {"num_ctx": 16384, "num_predict": num_predict, "temperature": 0.3},
             "keep_alive": -1
         }, stream=True, timeout=120 if think_flag else 60)
 
@@ -1265,7 +1400,7 @@ log_event("session", "session started", version=VERSION, voice_activated=VOICE_A
     # Snapshot of every setting that affects the numbers in this log, so
     # sessions stay comparable even after these values get tuned later.
     "model": "qwen3.6:27b",
-    "num_ctx": 8192,
+    "num_ctx": 16384,
     "num_predict": 160,
     "temperature": 0.3,
     "voice": "af_bella",

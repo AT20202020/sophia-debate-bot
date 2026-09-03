@@ -2,19 +2,27 @@
 setlocal EnableDelayedExpansion
 title Sophia - Debate Bot Launcher
 
-REM Both paths resolve relative to this .bat's own folder. Edit
-REM VENV_PYTHON if your Python environment lives elsewhere (see README
-REM setup - a venv named sophia-env next to this file is the default).
-set "VENV_PYTHON=%~dp0sophia-env\Scripts\python.exe"
+REM This launcher is self-installing: on a clean checkout it detects a
+REM compatible Python, creates the sophia-env venv, installs
+REM requirements.txt, checks Ollama is installed and has the model
+REM pulled, and warns (without blocking) about the optional espeak-ng
+REM and whisper-server pieces. Every check either fixes itself or prints
+REM exactly what to do and where to get it - nothing should require
+REM reading the README just to get a first run working.
 set "SCRIPT=%~dp0debate_voice.py"
+set "VENV_DIR=%~dp0sophia-env"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+set "REQ_FILE=%~dp0requirements.txt"
+set "REQ_HASH_FILE=%~dp0.requirements.sha256"
+set "MODEL_NAME=qwen3.8:27b"
 
 REM whisper.cpp GPU transcription server - optional, lives in the
 REM whisper-server subfolder if you've set it up (gitignored - it's
-REM large, machine-specific binaries, not code; see whisper-server\
-REM README.txt or the README's "Optional GPU transcription" section).
-REM debate_voice.py talks to it over HTTP on 8090 and falls back
-REM automatically to slower CPU transcription if it's not present or
-REM not reachable, so skipping this setup entirely is fine.
+REM large, machine-specific binaries, not code; see the README's
+REM "Optional GPU transcription" section). debate_voice.py talks to it
+REM over HTTP on 8090 and falls back automatically to slower CPU
+REM transcription if it's not present or not reachable, so skipping
+REM this setup entirely is fine.
 set "WHISPER_EXE=%~dp0whisper-server\whisper-server.exe"
 set "WHISPER_MODEL=%~dp0whisper-server\ggml-small.en.bin"
 
@@ -23,18 +31,141 @@ echo   Sophia - Agnostic Atheist Debate Bot
 echo ============================================
 echo.
 
-REM --- Sanity checks -------------------------------------------------------
-if not exist "%VENV_PYTHON%" (
-    echo [ERROR] Python venv not found at:
-    echo   %VENV_PYTHON%
-    echo Check that sophia-env exists next to this file - see README setup.
+if not exist "%SCRIPT%" (
+    echo [ERROR] debate_voice.py not found at:
+    echo   %SCRIPT%
+    echo This launcher must live in the same folder as debate_voice.py.
     pause
     exit /b 1
 )
 
-if not exist "%SCRIPT%" (
-    echo [ERROR] debate_voice.py not found at:
-    echo   %SCRIPT%
+REM --- curl is used by every check below (Ollama, whisper-server) ---------
+where curl >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] curl not found. It ships with Windows 10/11 by default -
+    echo if it's missing, something unusual has been done to this machine.
+    echo Install curl and re-run this launcher.
+    pause
+    exit /b 1
+)
+
+REM --- Find a compatible Python (3.10 - 3.12; kokoro cannot install on
+REM 3.13+) and remember how to invoke it, preferring the newest ----------
+echo Checking for a compatible Python (3.10-3.12)...
+set "PYCMD="
+for %%V in (3.12 3.11 3.10) do (
+    if not defined PYCMD (
+        py -%%V -V >nul 2>&1
+        if not errorlevel 1 set "PYCMD=py -%%V"
+    )
+)
+if not defined PYCMD (
+    REM No py launcher, or none of those versions registered with it -
+    REM fall back to whatever "python" resolves to and check its version
+    REM via plain text matching. Deliberately avoids "python -c" here -
+    REM parentheses inside a quoted -c argument, nested inside this
+    REM if-block, are a known cmd.exe block-parsing trap.
+    where python >nul 2>&1
+    if not errorlevel 1 (
+        for /f "usebackq delims=" %%L in (`python --version 2^>^&1`) do set "PYVER_LINE=%%L"
+        echo !PYVER_LINE! | findstr /r /c:"Python 3\.1[0-2]\." >nul
+        if not errorlevel 1 set "PYCMD=python"
+    )
+)
+if not defined PYCMD (
+    echo [ERROR] No compatible Python found ^(need 3.10, 3.11, or 3.12 -
+    echo 3.12 is what this project is tested on; 3.13+ fails to install
+    echo the "kokoro" package^).
+    echo Install it from https://www.python.org/downloads/ and check
+    echo "Add python.exe to PATH" during setup, then re-run this launcher.
+    pause
+    exit /b 1
+)
+echo Using: !PYCMD!
+
+REM --- Create the venv if it doesn't exist yet -----------------------------
+if not exist "%VENV_PYTHON%" (
+    echo Creating virtual environment at sophia-env ...
+    !PYCMD! -m venv "%VENV_DIR%"
+    if not exist "%VENV_PYTHON%" (
+        echo [ERROR] Failed to create the virtual environment at:
+        echo   %VENV_DIR%
+        pause
+        exit /b 1
+    )
+)
+
+REM --- Install/refresh dependencies, but only when requirements.txt has
+REM actually changed since the last successful install (hashed via
+REM certutil, built into Windows) - keeps every normal launch after the
+REM first one fast instead of re-running pip every time. -----------------
+set "NEWHASH="
+for /f "skip=1 delims=" %%H in ('certutil -hashfile "%REQ_FILE%" SHA256 2^>nul') do if not defined NEWHASH set "NEWHASH=%%H"
+set "NEWHASH=%NEWHASH: =%"
+set "OLDHASH="
+if exist "%REQ_HASH_FILE%" set /p OLDHASH=<"%REQ_HASH_FILE%"
+
+if /i not "%NEWHASH%"=="%OLDHASH%" (
+    echo Installing Python dependencies - first run only takes a few
+    echo minutes ^(this pulls PyTorch as a Kokoro dependency^)...
+    "%VENV_PYTHON%" -m pip install --upgrade pip --quiet
+    "%VENV_PYTHON%" -m pip install -r "%REQ_FILE%"
+    if errorlevel 1 (
+        echo [ERROR] pip install failed - see the output above for details.
+        pause
+        exit /b 1
+    )
+    if defined NEWHASH echo %NEWHASH%> "%REQ_HASH_FILE%"
+) else (
+    echo Python dependencies already installed and up to date.
+)
+
+REM --- espeak-ng: needed by Kokoro to phonemize out-of-dictionary words.
+REM Soft requirement - missing it degrades pronunciation of unusual
+REM words rather than crashing, so this warns and continues rather than
+REM exiting. -----------------------------------------------------------
+set "ESPEAK_OK=0"
+where espeak-ng >nul 2>&1 && set "ESPEAK_OK=1"
+if "!ESPEAK_OK!"=="0" if exist "%ProgramFiles%\eSpeak NG\espeak-ng.exe" set "ESPEAK_OK=1"
+if "!ESPEAK_OK!"=="0" (
+    where winget >nul 2>&1
+    if not errorlevel 1 (
+        echo espeak-ng not found - attempting install via winget...
+        winget install --id eSpeak-NG.eSpeak-NG -e --silent --accept-package-agreements --accept-source-agreements >nul 2>&1
+        where espeak-ng >nul 2>&1 && set "ESPEAK_OK=1"
+        if exist "%ProgramFiles%\eSpeak NG\espeak-ng.exe" set "ESPEAK_OK=1"
+    )
+)
+if "!ESPEAK_OK!"=="0" (
+    echo [WARNING] espeak-ng not found - Kokoro may mispronounce unusual
+    echo or out-of-dictionary words. For best results, install it from
+    echo https://github.com/espeak-ng/espeak-ng/releases ^(the .msi^).
+) else (
+    echo espeak-ng found.
+)
+
+REM --- Ollama must be installed - there is no CPU/GPU fallback for the
+REM LLM itself, so this is fatal if it can't be resolved. -----------------
+where ollama >nul 2>&1
+if errorlevel 1 (
+    where winget >nul 2>&1
+    if not errorlevel 1 (
+        echo Ollama not found - attempting install via winget...
+        winget install --id Ollama.Ollama -e --silent --accept-package-agreements --accept-source-agreements
+        echo.
+        echo Ollama was just installed. Windows needs a moment to update
+        echo this terminal's PATH, so please close this window and run
+        echo Start Sophia.bat again.
+        pause
+        exit /b 0
+    )
+)
+where ollama >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Ollama is not installed and could not be installed
+    echo automatically ^(winget unavailable^).
+    echo Install it from https://ollama.com/download, then re-run this
+    echo launcher.
     pause
     exit /b 1
 )
@@ -72,6 +203,29 @@ if "!OLLAMA_STATUS!"=="200" (
 )
 
 del "%TEMP%\sophia_ollama_check.txt" >NUL 2>&1
+
+REM --- Make sure the model is pulled ---------------------------------------
+set "OLLAMA_UP=0"
+if "!OLLAMA_STATUS!"=="200" set "OLLAMA_UP=1"
+if "!OLLAMA_UP!"=="0" (
+    echo Skipping model check - Ollama isn't responding yet.
+) else (
+    ollama list | findstr /i /c:"%MODEL_NAME%" >nul
+    if errorlevel 1 (
+        echo Model %MODEL_NAME% not found - pulling it now. This is a large
+        echo download ^(tens of GB^) and may take a while depending on your
+        echo connection...
+        ollama pull %MODEL_NAME%
+        if errorlevel 1 (
+            echo [ERROR] Failed to pull %MODEL_NAME%. Check your internet
+            echo connection, then re-run this launcher.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo Model %MODEL_NAME% already pulled.
+    )
+)
 
 REM --- Make sure the whisper.cpp GPU transcription server is running -------
 REM Any real HTTP response (even 404/405 for a GET on this POST-only route)

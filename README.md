@@ -30,6 +30,8 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
 
 **Software, in order:**
 
+*On Windows, `Start Sophia.bat` checks 1-3 itself and either fixes them or tells you what to do - this list is for manual setup or other platforms.*
+
 1. **Python ≥3.10 and <3.13** — this is a hard requirement of the `kokoro` package, not a suggestion; 3.13 will fail to install it. 3.12 is what this project is tested on.
 2. **[Ollama](https://ollama.com)** installed and able to run, with a model pulled (default: `qwen3.8:27b`).
 3. **[espeak-ng](https://github.com/espeak-ng/espeak-ng/releases)** — required by Kokoro for phonemization of out-of-dictionary words. On Windows: download the latest `.msi` from the releases page and run it. On Debian/Ubuntu: `sudo apt install espeak-ng`.
@@ -41,6 +43,12 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
 - The launcher `.bat` uses `curl`, which is built into Windows 10+.
 
 ## Setup
+
+### Quick start (Windows)
+
+Just run `Start Sophia.bat`. It's self-installing: it finds a compatible Python (3.10-3.12), creates the `sophia-env` venv, installs `requirements.txt` into it, checks that Ollama is installed (offering to install it via `winget` if not) and running, pulls `qwen3.8:27b` if you don't have it yet, and warns - without blocking - if `espeak-ng` is missing. Every check either fixes itself or tells you exactly what's missing and where to get it. First run takes a while (Python packages, then a large model pull); every run after that is fast.
+
+### Manual setup (any OS, or if you want full control)
 
 ```powershell
 # 1. Create a venv with Python 3.12
@@ -56,8 +64,6 @@ ollama pull qwen3.8:27b
 # 4. Run
 .\sophia-env\Scripts\python.exe debate_voice.py
 ```
-
-Or use `Start Sophia.bat` (edit `VENV_PYTHON` at the top to point at your venv) — it checks that Ollama is up, starts it if not, and launches the bot.
 
 ### Optional: GPU-accelerated transcription
 

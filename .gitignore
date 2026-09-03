@@ -19,3 +19,4 @@ sophia-env/
 
 # Backup copies made while editing files - not part of the project
 *.bak
+.requirements.sha256

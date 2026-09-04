@@ -56,7 +56,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.39"
+VERSION = "2.40"
 
 import sounddevice as sd
 import numpy as np
@@ -792,6 +792,36 @@ CLAUSE_PAUSE = np.zeros(int(24000 * 0.01), dtype=np.float32)    # ~10ms
 # delay per chunk and nothing else.
 LEAD_IN_SILENCE = np.zeros(int(24000 * 0.06), dtype=np.float32)  # ~60ms
 
+# Kokoro synthesizes every sentence AND every comma-split clause as its
+# own standalone utterance, and like most TTS models it adds a bit of
+# trailing (sometimes leading) silence/breath at the end of whatever
+# text it's given, treating each fragment as complete. That model-added
+# silence stacks with LEAD_IN_SILENCE/SENTENCE_PAUSE/CLAUSE_PAUSE above -
+# which are all tiny (60/30/10ms) - and is the real source of pauses at
+# every comma and period feeling much longer than those numbers alone
+# would explain (v2.40). Trimming each chunk's silent edges before
+# playback puts pacing fully under OUR control instead of compounding
+# with however much Kokoro decided to add.
+# Starting values, not empirically tuned against your voice/speed
+# settings - if words still sound clipped at the start, raise
+# SILENCE_TRIM_PAD_MS; if pauses still feel long, lower
+# SILENCE_TRIM_THRESHOLD (catches quieter breath noise) or PAD_MS.
+SILENCE_TRIM_THRESHOLD = 0.02  # relative amplitude below which a sample counts as silence
+SILENCE_TRIM_PAD_MS = 15       # kept at each edge so onsets/decays aren't clipped
+
+def _trim_silence(audio, threshold=SILENCE_TRIM_THRESHOLD, pad_ms=SILENCE_TRIM_PAD_MS, sr=24000):
+    """Strips near-silent audio from the start and end of one synthesized
+    chunk, keeping a small pad so word onsets/decays aren't clipped.
+    Returns the audio unchanged if it's all silence (a synth glitch isn't
+    a reason to crash playback with an empty array)."""
+    pad = int(sr * pad_ms / 1000)
+    loud = np.where(np.abs(audio) > threshold)[0]
+    if loud.size == 0:
+        return audio
+    start = max(0, loud[0] - pad)
+    end = min(len(audio), loud[-1] + pad)
+    return audio[start:end]
+
 def synth_worker():
     """Pulls (sentence, is_final) off speech_queue, synthesizes audio, and
     puts (audio, is_final) onto audio_queue. Runs continuously so synthesis
@@ -813,6 +843,7 @@ def synth_worker():
             chunks = [audio for _, _, audio in generator]
             if chunks:
                 full_audio = np.concatenate(chunks).astype(np.float32)
+                full_audio = _trim_silence(full_audio)
                 print(f"[synth: {time.time() - t0:.2f}s for \"{sentence[:40]}...\"]")
                 audio_queue.put((full_audio, is_final))
         except Exception as e:
@@ -1477,7 +1508,12 @@ log_event("session", "session started", version=VERSION, voice_activated=VOICE_A
     # sessions stay comparable even after these values get tuned later.
     "model": "qwen3.8:27b",
     "num_ctx": 16384,
-    "num_predict": 280,
+    # Stale "280" literal here (pre-v2.39) never matched the real
+    # NORMAL_NUM_PREDICT after that got raised to 450 - fixed in v2.40.
+    # Deep-mode/retry turns run at a different budget than this snapshot;
+    # the per-turn log_event() calls in get_response_streaming() carry
+    # the actual value used for each one.
+    "num_predict": NORMAL_NUM_PREDICT,
     "temperature": 0.3,
     "voice": "af_bella",
     "speed": 1.25,
@@ -1486,6 +1522,8 @@ log_event("session", "session started", version=VERSION, voice_activated=VOICE_A
     "clause_threshold": CLAUSE_THRESHOLD,
     "sentence_pause_ms": round(len(SENTENCE_PAUSE) / 24),
     "clause_pause_ms": round(len(CLAUSE_PAUSE) / 24),
+    "silence_trim_threshold": SILENCE_TRIM_THRESHOLD,
+    "silence_trim_pad_ms": SILENCE_TRIM_PAD_MS,
     "system_prompt_chars": len(conversation[0]["content"]),
 })
 

@@ -4,7 +4,37 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
-## v2.39
+## v2.40
+
+Fixed pauses at every comma and period sounding much longer than
+intended, reported live by Jeff. LEAD_IN_SILENCE/SENTENCE_PAUSE/
+CLAUSE_PAUSE are only 60/30/10ms - nowhere near long enough to explain
+it. The real cause: every sentence AND every comma-split clause is sent
+to Kokoro as its own standalone synthesis call, and like most TTS
+models it adds trailing (sometimes leading) silence/breath to whatever
+text it's given, treating each fragment as a complete utterance. That
+model-added silence was stacking with our own tiny gaps at every single
+split point.
+
+Added `_trim_silence()` - strips near-silent audio (relative amplitude
+below `SILENCE_TRIM_THRESHOLD = 0.02`) from both edges of each
+synthesized chunk before it's queued for playback, keeping a
+`SILENCE_TRIM_PAD_MS = 15` pad so word onsets/decays aren't clipped.
+Pacing is now fully governed by SENTENCE_PAUSE/CLAUSE_PAUSE again
+instead of compounding with however much Kokoro decided to add.
+
+Also fixed a stale `"num_predict": 280` literal in the session config
+log left over from v2.39's NORMAL_NUM_PREDICT bump to 450 - it now
+references the constant, and the log snapshot includes the new trim
+settings too.
+
+**Not yet verified by ear** - this environment has no audio output, so
+the threshold/pad values are a reasoned starting point (a TTS model's
+own utterance-final silence is rarely below a few percent of peak
+amplitude), not a live-tuned one. If pauses still feel long after this,
+lower `SILENCE_TRIM_THRESHOLD` first (catches quieter breath noise
+`_trim_silence` currently treats as speech); if word starts/ends sound
+clipped, raise `SILENCE_TRIM_PAD_MS`.
 
 Empty-reply hardening, found in a real debate session (not synthetic
 testing this time - Jeff hit it live): a philosophically meaty question

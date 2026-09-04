@@ -32,7 +32,12 @@ of these reintroduces a bug that took real debugging to find:
     an answer (empty reply). Raised to NORMAL_NUM_PREDICT=450, and
     get_response_streaming() now retries once at double the budget if a
     turn still comes back empty, instead of only speaking the canned
-    "say that again" fallback line.
+    "say that again" fallback line. The 'mod'/'verdict'/'steelman'
+    commands have their OWN budget (EXTENDED_NUM_PREDICT) for the same
+    reason, deliberately higher than the normal ceiling since they're
+    allowed longer answers - keep it above NORMAL_NUM_PREDICT if that
+    ever changes again, or they silently get LESS room than an ordinary
+    turn despite needing more (v2.39/v2.40 regression, fixed in v2.41).
 
   * THINK IS A STRING NOW, NOT A BOOLEAN (v2.38, qwen3.8:27b). This model
     uses a reasoning_effort API ("low"/"high") instead of qwen3.6's plain
@@ -56,7 +61,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.40"
+VERSION = "2.41"
 
 import sounddevice as sd
 import numpy as np
@@ -191,9 +196,25 @@ NORMAL_NUM_PREDICT = 450
 # length cutoff.
 DEEP_NUM_PREDICT = 2560
 
+# Budget for the 'mod', 'verdict', and 'steelman' commands - each is
+# explicitly allowed MORE room than a normal debate turn (verdict wants
+# "four to six sentences" of specific justification, steelman up to six
+# sentences reconstructing AND attacking an argument, mod is unbound by
+# the 45-word debate limit at all). This was hardcoded to 400 back when
+# NORMAL_NUM_PREDICT was 280, so it was comfortably above the normal
+# ceiling. v2.39 raised NORMAL_NUM_PREDICT to 450 without touching this,
+# which silently made these three commands get LESS room than an ordinary
+# turn despite needing more - confirmed live in a v2.39 session where both
+# a verdict and a mod response came back truncated
+# ("[trimmed incomplete fragment: ...]"). Set well above NORMAL_NUM_PREDICT
+# so reasoning tokens plus a longer answer both fit; matches the retry
+# ceiling normal turns fall back to, since these turns have the same
+# reasoning-then-answer shape just with a bigger answer target.
+EXTENDED_NUM_PREDICT = 900
+
 # One-shot overrides consumed by the next get_response_streaming call -
-# used by the 'verdict' and 'steelman' commands to give a single turn a
-# different token budget without touching deep_mode.
+# used by the 'mod', 'verdict', and 'steelman' commands to give a single
+# turn a different token budget without touching deep_mode.
 _next_turn_overrides = {}
 
 def _think_effort(deep):
@@ -659,12 +680,11 @@ earned by the error in front of you, never deployed on schedule. Between
 two equally precise turns, the spicier one wins; a plodding turn that's
 precise still beats a funny one that's hollow.
 
-Every turn: 1-2 sentences AND under 45 words. Both bind. Don't evade the
-sentence limit by chaining clauses with semicolons into one enormous
-sentence — that's a monologue in disguise and takes half a minute to say
-aloud. If a point needs more room, make the sharpest half now and let
-them respond. Compression itself demonstrates command; anyone can be
-long.
+Every turn: 1-2 sentences, short enough to say in about ten seconds
+aloud. Don't evade the sentence limit by chaining clauses with semicolons
+into one enormous sentence — that's a monologue in disguise. If a point
+needs more room, make the sharpest half now and let them respond.
+Compression itself demonstrates command; anyone can be long.
 
 Vary your openings. If the last turn began by naming what they're doing
 ("You're conflating..."), start the next differently — with the
@@ -979,6 +999,29 @@ def clean_for_speech(text):
     aloud as literal words (e.g. saying "asterisk")."""
     return MARKDOWN_CHARS.sub('', text)
 
+# Whisper (both faster-whisper's CPU model and whisper.cpp's GPU server)
+# marks non-speech audio - dead air, a sniff, a cough, background noise -
+# with a bracketed/parenthesized tag instead of returning empty text, e.g.
+# "[BLANK_AUDIO]" or "(sniffing)". Left alone, that tag is indistinguishable
+# from something the user actually said and gets sent to Ollama as their
+# turn - confirmed live in a real session, where "[BLANK_AUDIO]" and
+# "[SNIFF]" both leaked into the conversation as if spoken. Stripped here,
+# in _whisper_transcribe(), so every caller (push-to-talk chunking and the
+# voice-activated single-pass path) gets clean text for free.
+_NONSPEECH_TAG_RE = re.compile(
+    r'[\[\(]\s*(?:BLANK[_ ]?AUDIO|SILENCE|SNIFF\w*|COUGH\w*|LAUGH\w*|'
+    r'PAUSE|NOISE|MUSIC|INAUDIBLE|CLICK\w*|BREATH\w*|SIGH\w*|'
+    r'THROAT[_ ]CLEARING|CROSSTALK)\s*[\]\)]',
+    re.IGNORECASE,
+)
+
+def _strip_nonspeech_tags(text):
+    """Removes bracketed/parenthesized non-speech tags Whisper emits in
+    place of real words (see _NONSPEECH_TAG_RE above). Safe to run on
+    already-clean text - it's a no-op if no tag is present. Collapses the
+    double space a mid-sentence removal leaves behind."""
+    return re.sub(r'\s{2,}', ' ', _NONSPEECH_TAG_RE.sub("", text)).strip()
+
 # Optional GPU-accelerated transcription. faster-whisper (used below) only
 # has CUDA/CPU backends - it structurally cannot use your AMD GPU. If you
 # set up a local whisper.cpp server built with ROCm support (see SETUP
@@ -1032,7 +1075,7 @@ def _whisper_transcribe(audio, context=""):
         result = _transcribe_via_server(audio)
         if result is not None:
             _whisper_server_available = True
-            return result
+            return _strip_nonspeech_tags(result)
         if _whisper_server_available is None:
             print("[whisper.cpp GPU server not reachable - using CPU transcription for this session]")
         _whisper_server_available = False
@@ -1051,7 +1094,7 @@ def _whisper_transcribe(audio, context=""):
         temperature=[0.0, 0.2, 0.4],
         condition_on_previous_text=False,
     )
-    return " ".join(seg.text for seg in segments).strip()
+    return _strip_nonspeech_tags(" ".join(seg.text for seg in segments).strip())
 
 def transcribe(audio):
     """Used by voice-activated mode, where the whole utterance is already
@@ -1578,7 +1621,7 @@ else:
                     continue
                 # Moderator turns get room to answer properly - they're
                 # out-of-debate and not bound by the 45-word debate limit.
-                _next_turn_overrides["num_predict"] = 400
+                _next_turn_overrides["num_predict"] = EXTENDED_NUM_PREDICT
                 _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 print(f"[moderator] {mod_text}")
                 log_event("moderator", mod_text)
@@ -1595,7 +1638,7 @@ else:
                 # logged), but is removed from the conversation afterward
                 # so stepping out of character doesn't soften her stance
                 # for the rest of the debate.
-                _next_turn_overrides["num_predict"] = 400
+                _next_turn_overrides["num_predict"] = EXTENDED_NUM_PREDICT
                 _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 verdict_text = get_response_streaming(VERDICT_INSTRUCTION)
                 speech_queue.join()
@@ -1618,7 +1661,7 @@ else:
                     continue
                 # Unlike verdict, this STAYS in the conversation - the
                 # steelman becomes part of the debate she'll keep engaging.
-                _next_turn_overrides["num_predict"] = 400
+                _next_turn_overrides["num_predict"] = EXTENDED_NUM_PREDICT
                 _next_turn_overrides["think"] = _think_effort(deep_mode["on"])
                 get_response_streaming(STEELMAN_INSTRUCTION)
                 speech_queue.join()

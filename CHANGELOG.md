@@ -4,6 +4,71 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.41
+
+Three fixes from reading a real debate transcript (v2.39, predating the
+v2.40 pause fix) end to end at Jeff's request, looking for accuracy and
+speed issues beyond what live use had already surfaced.
+
+**`mod`/`verdict`/`steelman` were getting LESS room than an ordinary
+turn, not more.** All three set `_next_turn_overrides["num_predict"] =
+400` - a value chosen back when the normal-turn ceiling was 280, so 400
+was comfortably above it. v2.39 raised `NORMAL_NUM_PREDICT` to 450
+without touching these, which silently flipped the relationship: three
+commands explicitly designed to need MORE room than a normal turn
+(verdict wants "four to six sentences" of specific justification,
+steelman up to six sentences reconstructing an argument before attacking
+it, mod is unbound by the debate word limit entirely) were quietly
+capped BELOW the default. The transcript showed the damage directly -
+both a verdict and a mod response came back cut off
+(`[trimmed incomplete fragment: ...]`). Added a dedicated
+`EXTENDED_NUM_PREDICT = 900` constant (matches the retry ceiling normal
+turns fall back to) and pointed all three overrides at it instead of the
+stale literal, with a note in the module docstring so the next
+NORMAL_NUM_PREDICT bump doesn't reintroduce the same gap.
+
+**Whisper's non-speech tags were leaking into the conversation as if
+spoken.** The transcript showed literal `[BLANK_AUDIO]` and `[SNIFF]`
+tokens sent to Ollama as the user's turn - both faster-whisper and
+whisper.cpp emit a bracketed tag like this instead of empty text when a
+chunk contains no actual speech (dead air, a sniff, a cough), and
+nothing was filtering it out before it reached the conversation history.
+Added `_strip_nonspeech_tags()` (regex-based, matches `BLANK_AUDIO`,
+`SILENCE`, `SNIFF*`, `COUGH*`, `LAUGH*`, `PAUSE`, `NOISE`, `MUSIC`,
+`INAUDIBLE`, `CLICK*`, `BREATH*`, `SIGH*`, `THROAT_CLEARING`,
+`CROSSTALK` in either bracket or parenthesis form) applied inside
+`_whisper_transcribe()` so both the push-to-talk chunking path and the
+voice-activated single-pass path get clean text for free. A chunk that's
+nothing but a tag now correctly transcribes to empty and is dropped,
+same as true silence always was.
+
+**Softened the "under 45 words" rule.** The transcript caught the model
+explicitly counting words token-by-token inside its own reasoning
+(`"Count: I(1) don't(2) have(3)...doesn't(28"`, cut off mid-count) before
+answering - a strict numeric ceiling paired with "Both bind" reads as a
+target to verify against, and verifying by counting burns reasoning
+budget on bookkeeping instead of the actual answer. This is the likely
+cause of at least one 23-second empty-reply/retry event in the
+transcript. Replaced the numeric word cap with a duration-based
+equivalent ("short enough to say in about ten seconds aloud") - keeps
+the same brevity intent and the hard 1-2 sentence constraint, but gives
+the model nothing that invites literal counting. Also fixed
+`sophia_eval.py`, which had fallen out of sync with the actual model
+(`qwen3.6:27b`, boolean `think`, `num_ctx` 8192, `num_predict` 160 - all
+stale since the qwen3.8 migration in v2.38) and would not have caught a
+regression from this change as-is.
+
+**Not yet empirically verified** - this environment has no path to
+Jeff's Ollama instance (same limitation noted in v2.38/v2.39), so none
+of the three fixes above were confirmed against a live rerun. The first
+two are mechanical and low-risk (a budget number and a text filter). The
+third changes SYSTEM_PROMPT wording, which is the highest-risk kind of
+edit in this project - per the module docstring, **run `sophia_eval.py`
+before trusting it in a real debate**, and watch a few live turns for
+replies that drift noticeably longer than before (the sentence-count
+constraint is still hard, but the duration framing is looser than a
+strict word count, so it's worth a specific look).
+
 ## v2.40
 
 Fixed pauses at every comma and period sounding much longer than

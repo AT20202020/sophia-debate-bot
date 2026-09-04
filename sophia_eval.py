@@ -12,7 +12,9 @@ kind of thing this catches.
 
 Each case is a fresh single-turn conversation (system prompt + one user
 message), so cases can't contaminate each other. Generation params match
-debate_voice.py exactly (num_ctx 8192, num_predict 160, temperature 0.3).
+debate_voice.py's normal-turn ("low" reasoning effort) settings as of v2.40:
+MODEL qwen3.8:27b, num_ctx 16384, num_predict 450 (NORMAL_NUM_PREDICT),
+temperature 0.3. Update these if debate_voice.py's constants change.
 Note temperature 0.3 is nonzero, so borderline cases can genuinely vary
 between runs - if a case looks wrong, rerun before concluding the prompt
 regressed.
@@ -26,7 +28,7 @@ import os
 import time
 import requests
 
-MODEL = "qwen3.6:27b"
+MODEL = "qwen3.8:27b"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 # (name, input, what a correct response looks like)
@@ -122,9 +124,9 @@ def run():
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_input},
                 ],
-                "think": False,
+                "think": "low",  # qwen3.8:27b takes "low"/"high" strings, not a boolean - see _think_effort() in debate_voice.py
                 "stream": False,
-                "options": {"num_ctx": 8192, "num_predict": 160, "temperature": 0.3},
+                "options": {"num_ctx": 16384, "num_predict": 450, "temperature": 0.3},
                 "keep_alive": -1,
             }, timeout=180)
             text = resp.json().get("message", {}).get("content", "").strip()

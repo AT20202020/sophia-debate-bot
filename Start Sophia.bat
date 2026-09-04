@@ -170,6 +170,24 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM --- GPU inference tuning (Jeff's speed investigation, Sept 2026) --------
+REM Flash attention + a quantized KV cache speed up generation without
+REM touching the model itself - same weights, same output, just cheaper
+REM math per token. On AMD RDNA3 cards (7900 XTX = gfx1100), flash
+REM attention needs THREE variables together, not just the first one:
+REM HSA_OVERRIDE_GFX_VERSION tells ROCm which attention kernel to use -
+REM without it, ROCm silently falls back to normal (unaccelerated)
+REM attention while OLLAMA_FLASH_ATTENTION=1 still looks "on". These only
+REM take effect when THIS launcher is the one starting ollama serve - if
+REM Ollama is already running from a previous launch, fully quit it first
+REM (or reboot) so it picks these up on its next start.
+REM Harmless no-ops on NVIDIA/other AMD architectures - HSA_OVERRIDE_GFX_VERSION
+REM and AMD_SERIALIZE_KERNEL are ROCm/RDNA3-specific and ignored otherwise.
+set "OLLAMA_FLASH_ATTENTION=1"
+set "HSA_OVERRIDE_GFX_VERSION=11.0.0"
+set "AMD_SERIALIZE_KERNEL=3"
+set "OLLAMA_KV_CACHE_TYPE=q8_0"
+
 REM --- Make sure Ollama is running -----------------------------------------
 echo Checking if Ollama is running...
 curl -s -o NUL -w "%%{http_code}" http://localhost:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL

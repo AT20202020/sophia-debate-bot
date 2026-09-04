@@ -26,6 +26,17 @@ REM this setup entirely is fine.
 set "WHISPER_EXE=%~dp0whisper-server\whisper-server.exe"
 set "WHISPER_MODEL=%~dp0whisper-server\ggml-small.en.bin"
 
+REM Disabled in v2.43: a code review found the GPU server path silently
+REM drops DOMAIN_VOCAB_PROMPT and the rolling chunk context (only the CPU
+REM branch in _whisper_transcribe() applies them), AND measured a flat
+REM ~2.1s/chunk versus ~1.5-1.85s on CPU on this exact machine - so it was
+REM simultaneously slower and deaf to the philosophy vocabulary tuning.
+REM CPU (faster-whisper) is the better default until the server is sending
+REM `prompt` on its /inference request and that's been verified. To try
+REM the GPU server again, delete this line - everything below still checks
+REM for it and falls back to CPU automatically either way.
+set "WHISPER_SERVER_DISABLED=1"
+
 echo ============================================
 echo   Sophia - Agnostic Atheist Debate Bot
 echo ============================================
@@ -181,11 +192,22 @@ REM attention while OLLAMA_FLASH_ATTENTION=1 still looks "on". These only
 REM take effect when THIS launcher is the one starting ollama serve - if
 REM Ollama is already running from a previous launch, fully quit it first
 REM (or reboot) so it picks these up on its next start.
-REM Harmless no-ops on NVIDIA/other AMD architectures - HSA_OVERRIDE_GFX_VERSION
-REM and AMD_SERIALIZE_KERNEL are ROCm/RDNA3-specific and ignored otherwise.
+REM v2.43 correction: a code review (with a source check against a live
+REM PyTorch/ROCm bug report) found AMD_SERIALIZE_KERNEL is a HIP DEBUGGING
+REM flag that forces kernel launches to run one at a time so a crash can be
+REM pinpointed - it exists to slow things down for diagnosis, never to
+REM speed them up, and had no business being in a performance change.
+REM HSA_OVERRIDE_GFX_VERSION=11.0.0 is a no-op on a real gfx1100 (7900 XTX
+REM already reports as gfx1100 natively) and is actively WRONG for anyone
+REM else who clones this repo on a different AMD card - it would force
+REM their GPU to load kernels built for a different architecture. Both
+REM removed. Keeping the two that are still legitimate, generic Ollama
+REM settings - though note neither one reaches an Ollama that's already
+REM running as the Windows tray app before this script starts: if that's
+REM how Ollama is running on this machine, these only take effect after a
+REM full Ollama quit + relaunch through this script, not on a normal
+REM tray-autostart boot.
 set "OLLAMA_FLASH_ATTENTION=1"
-set "HSA_OVERRIDE_GFX_VERSION=11.0.0"
-set "AMD_SERIALIZE_KERNEL=3"
 set "OLLAMA_KV_CACHE_TYPE=q8_0"
 
 REM --- Make sure Ollama is running -----------------------------------------
@@ -257,7 +279,7 @@ del "%TEMP%\sophia_whisper_check.txt" >NUL 2>&1
 if "!WHISPER_STATUS!"=="" set "WHISPER_STATUS=000"
 
 if "!WHISPER_STATUS!"=="000" (
-    if exist "%WHISPER_EXE%" (
+    if not defined WHISPER_SERVER_DISABLED if exist "%WHISPER_EXE%" (
         if exist "%WHISPER_MODEL%" (
             echo Whisper GPU server not running - starting it...
             start "Whisper Server" "%WHISPER_EXE%" -m "%WHISPER_MODEL%" --host 127.0.0.1 --port 8090

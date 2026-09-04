@@ -61,7 +61,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.42"
+VERSION = "2.43"
 
 import sounddevice as sd
 import numpy as np
@@ -183,7 +183,14 @@ deep_mode = {"on": False}
 # raising it; only turns that would otherwise have failed are. The
 # same-cause retry in get_response_streaming() covers the rare turns
 # that still overflow even this.
-NORMAL_NUM_PREDICT = 450
+# v2.43: a real qwen3.8 debate session (21 turns) still hit this ceiling
+# about 1 in 10 turns - one full empty-reply retry (23s round trip) and
+# one trimmed final sentence ("You're smuggling in the conclusion." cut
+# off, done_reason "length"). The retry path only fires on a FULLY empty
+# reply, so a trim like that one is currently just lost with no recovery.
+# Raised again since this is a ceiling, not a fixed cost - turns that
+# already finish under 450 are unaffected either way.
+NORMAL_NUM_PREDICT = 800
 
 # 768 was NOT enough - observed in a real session: the model spent all 768
 # tokens thinking, produced five words of answer, and got trimmed, costing
@@ -307,7 +314,12 @@ WHISPER_MODEL_SIZE = "small.en"
 # Biases Whisper toward the vocabulary this bot actually encounters.
 # Whisper accepts a text prompt as decoding context; supplying terms it
 # would otherwise never guess dramatically reduces domain mishearings.
-# Keep this under ~200 words - Whisper truncates long prompts.
+# faster-whisper truncates a long initial_prompt by keeping only its LAST
+# N tokens (not words - a code review flagged this comment for stating
+# the wrong unit) and dropping the front. This list runs well past 200
+# words once the philosopher names and multi-word terms are BPE-tokenized,
+# so it WILL get truncated on longer utterances - see where it's placed
+# in _whisper_transcribe() below, which matters more than trimming this.
 DOMAIN_VOCAB_PROMPT = (
     "A philosophy debate about theism and atheism. Terms used: theist, "
     "atheist, agnostic, contingency, contingent, necessary being, "
@@ -750,11 +762,24 @@ def summarize_and_save_memory(convo):
             # between requests, a full ~13s reload. This request omitting
             # num_ctx was the reason every 'new' reset cost ~18s from
             # v2.0 onward.
-            "options": {"num_ctx": 16384, "num_predict": 80, "temperature": 0.2},
+            # v2.43 fix: this was 80. qwen3.8:27b's "low" reasoning alone
+            # runs 58-404 tokens on a real debate turn (see NORMAL_NUM_PREDICT
+            # above) - 80 was consumed entirely by thinking before a single
+            # summary word came out, so `content` came back empty and the
+            # `if not summary: return` below silently discarded it on every
+            # single call since the qwen3.6->qwen3.8 migration. A code
+            # review found memory/sophia_memory.jsonl hadn't gained an
+            # entry since Aug 29 despite dozens of sessions after that date.
+            "options": {"num_ctx": 16384, "num_predict": 400, "temperature": 0.2},
             "keep_alive": -1
         }, timeout=30)
-        summary = resp.json().get("message", {}).get("content", "").strip()
+        result = resp.json()
+        summary = result.get("message", {}).get("content", "").strip()
         if not summary:
+            # Loud on purpose - this exact failure mode has now happened
+            # silently three times (v2.38/39/41 in the live bot, this one
+            # in the one Ollama call that wasn't being watched for it).
+            print(f"\n[memory not saved - empty summary, done_reason={result.get('done_reason')!r}]")
             return
         os.makedirs(MEMORY_DIR, exist_ok=True)
         with open(MEMORY_PATH, "a", encoding="utf-8") as f:
@@ -921,14 +946,22 @@ def playback_worker():
     next chunk a real chance instead of a guaranteed repeat. The initial
     open is wrapped separately: if every fallback tier in
     _open_output_stream() fails, that's a real hardware/driver problem
-    with no more tricks to try, but the thread should say so clearly and
-    exit instead of dumping a raw traceback mid-prompt and going silently
-    dead for the rest of the session."""
+    with no more tricks to try - but v2.43 fix: this used to just `return`
+    here, which left audio_queue with nothing draining it. Every later
+    `audio_queue.join()` call in the main loop then blocked FOREVER after
+    the first sentence of the first turn, on any machine where no output
+    device opens at all (a cloner with no speakers, a headless box) - the
+    printed message promised "audio is disabled this session," the actual
+    behavior was a silent, permanent freeze. Now it keeps consuming and
+    marking items done (without playing them) instead of exiting, so the
+    rest of the bot runs text-only exactly as advertised."""
     try:
         stream = _open_output_stream()
     except Exception as e:
         print(f"\n[playback: could not open any output stream, audio is disabled this session - {e}]")
-        return
+        while True:
+            item = audio_queue.get()
+            audio_queue.task_done()
     try:
         while True:
             item = audio_queue.get()
@@ -1110,10 +1143,19 @@ def _whisper_transcribe(audio, context=""):
             print("[whisper.cpp GPU server not reachable - using CPU transcription for this session]")
         _whisper_server_available = False
 
+    # v2.43 fix: faster-whisper keeps only the LAST N tokens of a
+    # too-long initial_prompt and drops the front. This used to put
+    # DOMAIN_VOCAB_PROMPT first and context after, so on any chunk past
+    # the first, growing context pushed the START of the vocab list
+    # (the rarest, most-mismatched terms - "theist, atheist, agnostic,
+    # contingency...") out of the window instead of the least useful
+    # part of the context. Vocab now goes LAST so it's the part that
+    # survives truncation; context is capped smaller since only enough
+    # to resolve a word split across the previous chunk boundary is
+    # actually needed here.
     prompt = DOMAIN_VOCAB_PROMPT
     if context:
-        # Only the tail matters, and Whisper truncates long prompts anyway.
-        prompt = f"{prompt} {context[-300:]}"
+        prompt = f"{context[-150:]} {DOMAIN_VOCAB_PROMPT}"
     segments, _ = whisper_model.transcribe(
         audio,
         language="en",
@@ -1333,6 +1375,14 @@ def get_response_streaming(text, interrupt_event=None):
 
             for line in resp.iter_lines():
                 if interrupt_event is not None and interrupt_event.is_set():
+                    # v2.43 fix: breaking here without closing the
+                    # streaming response left the connection open -
+                    # Ollama kept generating the abandoned reply in the
+                    # background until Python's GC eventually closed the
+                    # socket, and the NEXT request could queue behind
+                    # that still-running generation. Voice-activated mode
+                    # only (push-to-talk has no mid-reply interrupt path).
+                    resp.close()
                     break
                 if not line:
                     continue
@@ -1447,7 +1497,14 @@ def get_response_streaming(text, interrupt_event=None):
             # full_reply will still be empty if the request failed before
             # any tokens arrived.
             print("\n[no content generated - reasoning likely consumed the token budget, or the request failed]")
-            speech_queue.put(("Say that again, I lost my train of thought.", True))
+            fallback_line = "Say that again, I lost my train of thought."
+            speech_queue.put((fallback_line, True))
+            # v2.43 fix: this branch used to fall through to appending the
+            # still-empty full_reply below, so the conversation HISTORY got
+            # a blank assistant turn while the fallback line above was only
+            # ever spoken, never recorded - the model's own next turn would
+            # see itself having said nothing. Record what was actually said.
+            full_reply = fallback_line
 
     print()  # newline after the streamed text
     conversation.append({"role": "assistant", "content": full_reply})

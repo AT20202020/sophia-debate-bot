@@ -4,6 +4,125 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.43
+
+Acted on a second, independent code review (Fable 5.1, given folder access
+and asked to review the project cold) - CODE_REVIEW_2026-09-04.md has the
+full write-up. It corrected a real mistake in this project's own prior
+analysis and found bugs a first pass missed. Verified every claim below
+directly against the code/log/authoritative sources before acting on it -
+this wasn't taken on faith.
+
+**Correction to prior latency numbers.** The "~2.7s median time-to-first-
+token" figure used earlier this session mixed qwen3.6 sessions (Aug 28,
+135 turns, 2.63-2.72s) in with the one real qwen3.8 debate session (Sep 4,
+21 turns) without separating them - the qwen3.8 number alone is 7.99s
+median. Aggregating across a model migration without segmenting by version
+produced a misleadingly optimistic "typical" figure. Worth remembering for
+any future log analysis: always segment by version first.
+
+**The GPU whisper-server path was quietly worse on both axes at once, and
+has been since it was added.** `_transcribe_via_server()` posts only
+`file` and `response_format` to whisper.cpp's HTTP endpoint -
+`DOMAIN_VOCAB_PROMPT` and the rolling chunk context are applied only in
+the CPU fallback branch, which never runs while the server answers. The
+log showed `gpu_transcription: true` on every turn since the server was
+added, with a suspiciously flat ~2.1s/chunk regardless of audio length -
+slower than the ~1.5-1.85s CPU path on this same machine. So the GPU path
+has been both deaf to the philosophy vocabulary tuning AND slower than
+just not having it, this whole time. **Disabled the GPU server launch in
+Start Sophia.bat** (`WHISPER_SERVER_DISABLED=1`, one line, trivially
+reversible) rather than fix the server's request - CPU faster-whisper is
+simply the better default until someone confirms whisper-server's
+`/inference` route accepts a `prompt` field and that's been measured.
+
+**Fixed the vocab-prompt-truncation bug this exposed on the CPU path.**
+faster-whisper truncates `initial_prompt` by keeping only its LAST tokens,
+not the first - `DOMAIN_VOCAB_PROMPT` was being placed FIRST with the
+growing conversation context appended after, so once the combined length
+overflowed, it was the START of the vocabulary list (theist, atheist,
+agnostic, contingency...) that silently fell off, not the least-useful
+part of the context. Flipped the order (context first, vocab last, and
+context capped at 150 chars instead of 300) so the vocab list - the whole
+point of `DOMAIN_VOCAB_PROMPT` - is what survives truncation.
+
+**Cross-session memory has been silently dead since the qwen3.6->qwen3.8
+migration.** `summarize_and_save_memory()` sent `num_predict: 80` - qwen3.8's
+"low" reasoning alone runs 58-404 tokens on a real turn, so 80 was consumed
+entirely by thinking, the summary content came back empty, and the
+function returned silently. memory/sophia_memory.jsonl's last entry was
+Aug 29, despite dozens of sessions since. Same bug class as v2.38/39/41,
+in the one Ollama call nobody was watching for it. Raised to 400 and added
+a loud log line (with `done_reason`) on an empty summary so this doesn't
+happen a fourth time invisibly.
+
+**A cold clone with no working audio output hung forever on turn one,
+not "ran text-only" as advertised.** `playback_worker()` printed "audio is
+disabled this session" and returned on an open failure - but nothing else
+drains `audio_queue`, so the main loop's `audio_queue.join()` blocked
+permanently after the first sentence. Now it keeps consuming and marking
+items done instead of exiting, so text-only mode actually works instead of
+freezing silently.
+
+**`NORMAL_NUM_PREDICT` raised 450 -> 800.** Still clipped about 1 in 10
+turns in the one real qwen3.8 session logged so far - one full empty-reply
+retry (23s) and one trimmed final sentence that the retry path doesn't
+cover (it only fires on a fully empty reply). Ceiling, not a fixed cost,
+so this costs nothing on turns that already finish comfortably under it.
+
+**Two smaller correctness fixes:** an empty or failed reply used to append
+blank content to conversation history while only the spoken fallback line
+("Say that again...") went out loud - the model's own next turn would see
+itself having said nothing. Now the fallback text is what gets recorded,
+matching what was actually said. And breaking out of the streaming loop on
+a voice-activated-mode interrupt didn't close the response - Ollama kept
+generating the abandoned reply in the background, which could make the
+next request queue behind it. Both now handled.
+
+**Launcher correction on the flash-attention/KV-cache change from
+earlier this session:** `AMD_SERIALIZE_KERNEL=3` is a HIP DEBUGGING
+variable - confirmed against a live PyTorch/ROCm GitHub issue - that forces
+kernel launches to run one at a time so a crash can be isolated to a
+specific kernel. It exists to slow execution down for diagnosis, never to
+speed it up, and should never have been presented as a performance
+setting. `HSA_OVERRIDE_GFX_VERSION=11.0.0` is a no-op on a real gfx1100
+(the 7900 XTX already reports as gfx1100 natively) and would be actively
+wrong for anyone else cloning this repo on a different AMD architecture -
+it would force their card to load kernels built for gfx1100 regardless of
+what they actually have, which directly contradicts this project's own
+stated goal of working on someone else's computer. Both removed.
+`OLLAMA_FLASH_ATTENTION` and `OLLAMA_KV_CACHE_TYPE` are kept - they're
+generic, architecture-neutral Ollama settings - but with an added note
+that neither reaches an Ollama that's already running as the Windows tray
+app before the launcher starts, which is the default install behavior;
+the "confirmed active" flash attention from server.log may simply be
+Ollama's own "auto" default rather than anything the launcher did. Not
+re-verified with a controlled A/B - flagged, not fixed, since it needs a
+real off/on comparison against this specific machine.
+
+**Added `probe_think_effort.py`** - a standalone script (not wired into
+the live bot) that sends the real SYSTEM_PROMPT plus one representative
+debate turn to Ollama with several `think` values (`"low"`, `false`,
+omitted, `"none"`, `"minimal"`) and reports HTTP status, whether a
+`thinking` field appears, `eval_count`, `done_reason`, and content for
+each. Answers whether a genuine lighter-than-"low" reasoning mode exists
+for qwen3.8:27b without guessing inside the live bot - the question
+ARCHITECTURE_NOTES.md's #4 left open. Needs to be run on this machine;
+no path to Ollama from where this was written.
+
+**Deliberately left for a follow-up pass** (see CODE_REVIEW_2026-09-04.md
+for full detail on each): confirming whether the first-turn ~5.4s
+prompt-eval spike on every qwen3.8 session is a KV-cache-slot issue
+(needs `OLLAMA_NUM_PARALLEL=1` + a server.log read); the exact token count
+DOMAIN_VOCAB_PROMPT consumes (needs the tokenizer, which isn't available
+from where this was written); several SYSTEM_PROMPT routing-logic
+critiques (the mode-1/mode-2 question tie-breaker, two different
+uncertainty defaults, the memory-continuity contradiction now that memory
+works again, mod turns having no length cap); stale model name/settings in
+check_ollama_cache.py and profile_latency.py; and the testing/portability
+gaps (unit-testable helpers, unpinned requirements, `.requirements.sha256`
+placement, README drift on latency and chunk size).
+
 ## v2.42
 
 Acted on ARCHITECTURE_NOTES.md's #1 recommendation (the rest of that

@@ -26,7 +26,13 @@ of these reintroduces a bug that took real debugging to find:
     Normal turns raised 160 -> 280 in v2.38 for the same reason: qwen3.8
     always spends SOME tokens thinking even at "low" effort (confirmed
     ~120-150 tokens on a real debate prompt), so 160 clipped ordinary
-    replies mid-sentence, not just deep-mode ones.
+    replies mid-sentence, not just deep-mode ones. Still not always
+    enough - a real session (v2.39) hit a philosophically meaty question
+    where "low" reasoning alone ran past 280 tokens without ever reaching
+    an answer (empty reply). Raised to NORMAL_NUM_PREDICT=450, and
+    get_response_streaming() now retries once at double the budget if a
+    turn still comes back empty, instead of only speaking the canned
+    "say that again" fallback line.
 
   * THINK IS A STRING NOW, NOT A BOOLEAN (v2.38, qwen3.8:27b). This model
     uses a reasoning_effort API ("low"/"high") instead of qwen3.6's plain
@@ -50,7 +56,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.38"
+VERSION = "2.39"
 
 import sounddevice as sd
 import numpy as np
@@ -162,14 +168,27 @@ turn_timing = {"request_start": None, "first_audio_time": None}
 # loop). Costs a few extra seconds per turn; that's the point - depth
 # over speed, chosen per debate.
 deep_mode = {"on": False}
+# Normal-turn budget. Raised 160 -> 280 in v2.38 (qwen3.8 spends some of
+# ANY turn's budget on invisible reasoning, not just deep mode's) - see
+# CHANGELOG. Still not always enough: a real v2.39 session hit a turn
+# where "low"-effort reasoning alone ran past 280 tokens without ever
+# reaching an answer, producing an empty reply. Raised again to 450 for
+# headroom. This is a ceiling, not a fixed length - turns that already
+# finish comfortably under the old cap are completely unaffected by
+# raising it; only turns that would otherwise have failed are. The
+# same-cause retry in get_response_streaming() covers the rare turns
+# that still overflow even this.
+NORMAL_NUM_PREDICT = 450
+
 # 768 was NOT enough - observed in a real session: the model spent all 768
 # tokens thinking, produced five words of answer, and got trimmed, costing
 # 25s for nothing. num_predict caps thinking AND answer combined, so the
 # budget has to comfortably exceed a full reasoning block. At ~34 tok/s
 # this means deep turns can take 30-60s - that is the trade being made.
 # NOT re-verified against qwen3.8:27b's "high" effort (v2.38) - only
-# "low" effort against the 280-token normal-turn budget has been tested
-# directly. Watch the first few live 'deep' turns for a length cutoff.
+# "low" effort against the normal-turn budget (NORMAL_NUM_PREDICT above)
+# has been tested directly. Watch the first few live 'deep' turns for a
+# length cutoff.
 DEEP_NUM_PREDICT = 2560
 
 # One-shot overrides consumed by the next get_response_streaming call -
@@ -1163,11 +1182,16 @@ def get_response_streaming(text, interrupt_event=None):
     The request/stream is wrapped in try/except: a dropped connection or
     Ollama crash used to raise an uncaught exception and kill the whole
     script. Now it's caught, logged, and falls through to the existing
-    empty-reply safety net below instead."""
+    empty-reply safety net below instead.
+
+    v2.39: if reasoning consumes the whole token budget and nothing gets
+    said at all (done_reason "length", empty reply), this retries once at
+    double the budget before falling back to the canned "say that again"
+    line - see the RETRY comment below _stream_once()."""
     num_predict = _next_turn_overrides.pop("num_predict", None)
     think_flag = _next_turn_overrides.pop("think", None)
     if num_predict is None:
-        num_predict = DEEP_NUM_PREDICT if deep_mode["on"] else 280
+        num_predict = DEEP_NUM_PREDICT if deep_mode["on"] else NORMAL_NUM_PREDICT
     if think_flag is None:
         think_flag = _think_effort(deep_mode["on"])
 
@@ -1184,91 +1208,118 @@ def get_response_streaming(text, interrupt_event=None):
     turn_timing["first_audio_time"] = None
     print("Sophia: ", end="", flush=True)
 
-    try:
-        resp = requests.post("http://localhost:11434/api/chat", json={
-            "model": "qwen3.8:27b",
-            "messages": conversation,
-            "think": think_flag,
-            "stream": True,
-            # num_ctx stays pinned (16384 as of v2.33, was 8192) in EVERY
-            # code path - see 2.13.
-            "options": {"num_ctx": 16384, "num_predict": num_predict, "temperature": 0.3},
-            "keep_alive": -1
-        }, stream=True, timeout=120 if think_flag == "high" else 60)
+    def _stream_once(token_budget):
+        """Runs one Ollama streaming request at the given token_budget and
+        feeds sentences to speech_queue as they complete. Pulled out of the
+        main body so the RETRY below (v2.39) can reuse it verbatim instead
+        of duplicating the whole streaming loop - shares state with the
+        enclosing call via nonlocal."""
+        nonlocal buffer, full_reply, done_reason, first_token_time, thinking_shown, ollama_stats
+        try:
+            resp = requests.post("http://localhost:11434/api/chat", json={
+                "model": "qwen3.8:27b",
+                "messages": conversation,
+                "think": think_flag,
+                "stream": True,
+                # num_ctx stays pinned (16384 as of v2.33, was 8192) in EVERY
+                # code path - see 2.13.
+                "options": {"num_ctx": 16384, "num_predict": token_budget, "temperature": 0.3},
+                "keep_alive": -1
+            }, stream=True, timeout=120 if think_flag == "high" else 60)
 
-        for line in resp.iter_lines():
-            if interrupt_event is not None and interrupt_event.is_set():
-                break
-            if not line:
-                continue
-            chunk = json.loads(line)
+            for line in resp.iter_lines():
+                if interrupt_event is not None and interrupt_event.is_set():
+                    break
+                if not line:
+                    continue
+                chunk = json.loads(line)
 
-            thinking = chunk.get("message", {}).get("thinking", "")
-            if thinking:
-                if not thinking_shown:
-                    print("\n[thinking] ", end="", flush=True)
-                    thinking_shown = True
-                print(thinking, end="", flush=True)
-                continue  # thinking tokens are not spoken, just shown
+                thinking = chunk.get("message", {}).get("thinking", "")
+                if thinking:
+                    if not thinking_shown:
+                        print("\n[thinking] ", end="", flush=True)
+                        thinking_shown = True
+                    print(thinking, end="", flush=True)
+                    continue  # thinking tokens are not spoken, just shown
 
-            token = chunk.get("message", {}).get("content", "")
-            if token:
-                if first_token_time is None:
-                    first_token_time = time.time()
-                    prefix = "\n" if thinking_shown else ""
-                    print(f"{prefix}\n[time to first token: {first_token_time - request_sent_time:.2f}s]\nSophia: ", end="", flush=True)
-                print(token, end="", flush=True)
-                buffer += token
-                full_reply += token
+                token = chunk.get("message", {}).get("content", "")
+                if token:
+                    if first_token_time is None:
+                        first_token_time = time.time()
+                        prefix = "\n" if thinking_shown else ""
+                        print(f"{prefix}\n[time to first token: {first_token_time - request_sent_time:.2f}s]\nSophia: ", end="", flush=True)
+                    print(token, end="", flush=True)
+                    buffer += token
+                    full_reply += token
 
-                # Check if buffer contains one or more complete sentences.
-                # Abbreviation periods are protected first so "e.g." etc.
-                # don't trigger a false sentence boundary.
-                protected = protect_abbreviations(buffer)
-                parts = SENTENCE_END.split(protected)
-                if len(parts) > 1:
-                    # All but the last part are complete sentences - queue them
-                    for sentence in parts[:-1]:
-                        sentence = restore_abbreviations(sentence.strip())
-                        if sentence:
-                            speech_queue.put((sentence, True))
-                    buffer = restore_abbreviations(parts[-1])  # remainder stays in buffer
-                elif len(buffer) > CLAUSE_THRESHOLD:
-                    # No full sentence yet, but buffer is getting long - split on
-                    # the last comma so audio can start sooner.
-                    comma_parts = COMMA_SPLIT.split(buffer)
-                    if len(comma_parts) > 1:
-                        for clause in comma_parts[:-1]:
-                            clause = clause.strip()
-                            if clause:
-                                speech_queue.put((clause, False))
-                        buffer = comma_parts[-1]
+                    # Check if buffer contains one or more complete sentences.
+                    # Abbreviation periods are protected first so "e.g." etc.
+                    # don't trigger a false sentence boundary.
+                    protected = protect_abbreviations(buffer)
+                    parts = SENTENCE_END.split(protected)
+                    if len(parts) > 1:
+                        # All but the last part are complete sentences - queue them
+                        for sentence in parts[:-1]:
+                            sentence = restore_abbreviations(sentence.strip())
+                            if sentence:
+                                speech_queue.put((sentence, True))
+                        buffer = restore_abbreviations(parts[-1])  # remainder stays in buffer
+                    elif len(buffer) > CLAUSE_THRESHOLD:
+                        # No full sentence yet, but buffer is getting long - split on
+                        # the last comma so audio can start sooner.
+                        comma_parts = COMMA_SPLIT.split(buffer)
+                        if len(comma_parts) > 1:
+                            for clause in comma_parts[:-1]:
+                                clause = clause.strip()
+                                if clause:
+                                    speech_queue.put((clause, False))
+                            buffer = comma_parts[-1]
 
-            if chunk.get("done"):
-                done_reason = chunk.get("done_reason", "")
-                # Ollama's final chunk carries per-request performance
-                # counters - keep the ones that matter for later analysis.
-                # load_ms > ~1000 on a turn means the model runner was
-                # RELOADED (the num_ctx-mismatch bug, or VRAM eviction) -
-                # the exact thing that caused the 13-19s spikes pre-2.13.
-                def _ms(key):
-                    val = chunk.get(key)
-                    return round(val / 1e6) if isinstance(val, (int, float)) else None
-                ollama_stats = {
-                    "prompt_eval_count": chunk.get("prompt_eval_count"),
-                    "prompt_eval_ms": _ms("prompt_eval_duration"),
-                    "eval_count": chunk.get("eval_count"),
-                    "eval_ms": _ms("eval_duration"),
-                    "load_ms": _ms("load_duration"),
-                }
-                if ollama_stats["eval_count"] and ollama_stats["eval_ms"]:
-                    ollama_stats["tokens_per_s"] = round(
-                        ollama_stats["eval_count"] / (ollama_stats["eval_ms"] / 1000), 1)
-                break
-    except requests.exceptions.RequestException as e:
-        print(f"\n[connection error talking to Ollama: {e}]")
-    except Exception as e:
-        print(f"\n[unexpected error during response streaming: {e}]")
+                if chunk.get("done"):
+                    done_reason = chunk.get("done_reason", "")
+                    # Ollama's final chunk carries per-request performance
+                    # counters - keep the ones that matter for later analysis.
+                    # load_ms > ~1000 on a turn means the model runner was
+                    # RELOADED (the num_ctx-mismatch bug, or VRAM eviction) -
+                    # the exact thing that caused the 13-19s spikes pre-2.13.
+                    def _ms(key):
+                        val = chunk.get(key)
+                        return round(val / 1e6) if isinstance(val, (int, float)) else None
+                    ollama_stats = {
+                        "prompt_eval_count": chunk.get("prompt_eval_count"),
+                        "prompt_eval_ms": _ms("prompt_eval_duration"),
+                        "eval_count": chunk.get("eval_count"),
+                        "eval_ms": _ms("eval_duration"),
+                        "load_ms": _ms("load_duration"),
+                    }
+                    if ollama_stats["eval_count"] and ollama_stats["eval_ms"]:
+                        ollama_stats["tokens_per_s"] = round(
+                            ollama_stats["eval_count"] / (ollama_stats["eval_ms"] / 1000), 1)
+                    break
+        except requests.exceptions.RequestException as e:
+            print(f"\n[connection error talking to Ollama: {e}]")
+        except Exception as e:
+            print(f"\n[unexpected error during response streaming: {e}]")
+
+    _stream_once(num_predict)
+
+    # RETRY (v2.39): reasoning occasionally still consumes the ENTIRE
+    # budget with zero answer tokens produced (done_reason "length", empty
+    # full_reply) even after raising NORMAL_NUM_PREDICT - confirmed live on
+    # a philosophically meaty question. One retry at double the budget
+    # usually just succeeds outright, which beats always falling back to
+    # the canned "say that again" line. Deliberately NOT retried for a
+    # connection/exception failure (empty full_reply with done_reason ==
+    # "") - hitting a dead connection again immediately would just double
+    # the wait for a request that's going to fail the same way.
+    not_interrupted = interrupt_event is None or not interrupt_event.is_set()
+    if not_interrupted and not full_reply.strip() and done_reason == "length":
+        retry_budget = num_predict * 2
+        print(f"\n[empty reply at num_predict={num_predict} - retrying once at {retry_budget}]")
+        buffer, full_reply, done_reason = "", "", ""
+        first_token_time, thinking_shown, ollama_stats = None, False, {}
+        _stream_once(retry_budget)
+        num_predict = retry_budget  # so the log below reflects what actually ran
 
     interrupted = interrupt_event is not None and interrupt_event.is_set()
     empty_reply = False

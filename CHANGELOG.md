@@ -4,6 +4,47 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.39
+
+Empty-reply hardening, found in a real debate session (not synthetic
+testing this time - Jeff hit it live): a philosophically meaty question
+("do you know logic is gating correct") sent qwen3.8:27b's "low"-effort
+reasoning past the entire 280-token normal-turn budget without ever
+emitting an answer - `done_reason: "length"`, zero content tokens. The
+existing safety net caught it (spoke the canned "say that again, I lost
+my train of thought" line instead of crashing or going silent), but a
+canned fallback on a working model is a gap worth closing, not just
+tolerating.
+
+Two changes, not mutually exclusive:
+
+- **Raised `NORMAL_NUM_PREDICT` 280 -> 450.** This is a ceiling, not a
+  fixed generation length, so turns that already finish comfortably
+  under the old cap are completely unaffected - the only turns this
+  changes are ones that would otherwise have failed. Given the model
+  streams and stops naturally on `done_reason: "stop"` well before
+  hitting whatever cap is set, raising it is close to free.
+- **One-time automatic retry at double the budget** when a turn still
+  comes back with an empty reply AND `done_reason == "length"` (not
+  retried for a connection/exception failure - hitting a dead Ollama
+  instance again immediately would just double the wait for a request
+  that's going to fail the same way regardless of budget). Pulled the
+  request+streaming loop out of `get_response_streaming()` into a nested
+  `_stream_once(token_budget)` helper so the retry reuses it verbatim
+  instead of duplicating ~90 lines of sentence-splitting logic. State
+  (`buffer`, `full_reply`, `done_reason`, `first_token_time`,
+  `thinking_shown`, `ollama_stats`) is explicitly reset before the retry
+  call so the log reflects only the attempt that actually mattered.
+
+**Not yet empirically re-verified against a second live failure** - this
+environment has no path to Jeff's Ollama instance (same limitation noted
+in v2.38), so the fix is reasoned from the v2.38/v1.3 failure pattern and
+Ollama's own streaming/done_reason semantics rather than confirmed
+against a second real overflow. Watch the console for `[empty reply at
+num_predict=... - retrying once at ...]` on future sessions - if that
+line shows up often, 450 isn't the real fix and the retry is just
+masking a budget that's still too tight for how this model reasons.
+
 ## v2.38
 
 Model upgrade, per Jeff's go-ahead: qwen3.6:27b -> qwen3.8:27b (released

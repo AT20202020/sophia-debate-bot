@@ -61,7 +61,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.41"
+VERSION = "2.42"
 
 import sounddevice as sd
 import numpy as np
@@ -1065,12 +1065,42 @@ def _transcribe_via_server(audio):
     except Exception:
         return None
 
+# Whisper (both backends) doesn't reliably return empty text on quiet
+# audio - it "generates phantom text during silences: words, phrases,
+# sometimes entire sentences that were never spoken" (a documented,
+# systemic failure mode, not specific to this project - see
+# ARCHITECTURE_NOTES.md's STT section). _strip_nonspeech_tags() above
+# only catches the cases where Whisper is honest enough to bracket its
+# guess as non-speech (e.g. "[BLANK_AUDIO]"). It does nothing for a
+# quiet/room-noise chunk where Whisper just invents a plausible-sounding
+# sentence with no tag at all. This gate catches THAT case by refusing
+# to even ask Whisper about audio that's below a loudness floor -
+# silence in, silence out, guaranteed, instead of hoping Whisper says
+# nothing on its own.
+SILENCE_RMS_THRESHOLD = 0.006  # relative amplitude (audio is float32 in [-1, 1])
+
+def _is_effectively_silent(audio, threshold=SILENCE_RMS_THRESHOLD):
+    """True if `audio` is quiet enough that it isn't worth sending to
+    Whisper at all - room tone, mic hiss, a breath. Deliberately
+    conservative (low threshold): the failure mode of transcribing a
+    truly-silent chunk anyway is a wasted ~1.5-2s Whisper call; the
+    failure mode of skipping actual quiet speech is losing what was
+    said, which is far worse. NOT yet tuned against a real quiet-speech
+    sample from this mic/room - if genuine quiet speech starts getting
+    dropped, lower this; if hallucinated phantom text still gets
+    through, raise it."""
+    if len(audio) == 0:
+        return True
+    return float(np.sqrt(np.mean(np.square(audio)))) < threshold
+
 def _whisper_transcribe(audio, context=""):
     """Transcribe one buffer. `context` is the text transcribed so far in
     this utterance - passing it as decoding context is what lets a chunk
     understand a word that began in the previous chunk, which was the
     main source of garbled output when chunks were transcribed blind."""
     global _whisper_server_available
+    if _is_effectively_silent(audio):
+        return ""
     if _whisper_server_available is not False:
         result = _transcribe_via_server(audio)
         if result is not None:

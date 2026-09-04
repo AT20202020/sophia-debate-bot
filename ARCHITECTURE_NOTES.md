@@ -101,7 +101,17 @@ options, not mutually exclusive:
   have this failure mode by design, rather than needing to be patched
   around it.
 
-### 2. Try Moonshine for the final (post-Enter) chunk specifically (medium effort, worth a real test)
+### 2. Try Moonshine for the final (post-Enter) chunk specifically (medium effort, worth a real test) — STATUS: not implemented, blocked
+
+Checked its docs directly before writing any integration code: no
+confirmed support for `initial_prompt`/vocabulary biasing turned up,
+which is exactly the mechanism `DOMAIN_VOCAB_PROMPT` depends on for
+philosophy jargon. Combined with having no way to test real transcription
+accuracy from this environment (no mic access here), writing integration
+code against an unconfirmed API for a component this central would be
+guessing, not implementing. Needs either confirming the API more
+thoroughly or Jeff testing it hands-on with real speech before any code
+gets written.
 
 Moonshine is a 245M-parameter streaming ASR model reported to match or
 beat Whisper Large v3 on English benchmarks at a fraction of the size,
@@ -128,7 +138,19 @@ research above. Further gains there would mean quantizing the LLM
 further (a real logic/precision tradeoff, discussed and deliberately not
 done this session) — not a free architecture change.
 
-### 4. A tiered response budget: not every turn needs full "low" reasoning effort
+### 4. A tiered response budget: not every turn needs full "low" reasoning effort — STATUS: not implemented, real blocker found
+
+Tried to implement this and hit a hard stop: there is no verified
+setting below `"low"` for qwen3.8:27b's `think` field. debate_voice.py's
+own v2.38 history (and its module docstring) documents that sending
+anything other than `_think_effort()`'s output reproduced the exact
+empty-reasoning-budget failure this project spent three versions fixing
+(v2.38 -> v2.39 -> v2.40). Shipping "skip reasoning for simple turns"
+would mean reopening that bug class for a speed gain that isn't even
+confirmed to exist. Left alone. Worth revisiting only via controlled
+testing directly against Ollama's API first (compare `think` values on
+identical prompts, outside the live bot) - not something to guess at in
+debate_voice.py directly.
 
 This is the one genuinely new idea out of this research, not something
 already half-done. Right now every ordinary turn gets the same reasoning

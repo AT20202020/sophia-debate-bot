@@ -4,6 +4,56 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.42
+
+Acted on ARCHITECTURE_NOTES.md's #1 recommendation (the rest of that
+list needed a different kind of follow-through than "write code" - see
+below).
+
+**Silence gate before Whisper ever sees a chunk.** The `[BLANK_AUDIO]`/
+`[SNIFF]` fix in v2.41 only catches non-speech Whisper is honest enough
+to tag as such. Research into other real-time voice projects surfaced
+that this is a known, systemic Whisper behavior, not a one-off: it
+"generates phantom text during silences... words, phrases, sometimes
+entire sentences that were never spoken," untagged. Added
+`_is_effectively_silent()` - a plain RMS-amplitude check - at the very
+top of `_whisper_transcribe()`, before either the GPU server or CPU
+model gets a chance to invent something. Below `SILENCE_RMS_THRESHOLD =
+0.006`, a chunk returns empty without ever being sent to Whisper at all:
+silence in, silence out, guaranteed, and a small speed bonus (skips a
+~1.5-2s call entirely) rather than just a correctness fix.
+
+**Not yet tuned against real audio** - same limitation as the v2.40 TTS
+silence trim: no path to this machine's mic from where this was written.
+Deliberately picked a conservative (low) threshold since dropping actual
+quiet speech is a worse failure than an occasional wasted transcription
+call. If quiet speech starts getting silently dropped, lower it; if
+phantom text still gets through, raise it.
+
+**The other two items from ARCHITECTURE_NOTES.md were investigated and
+NOT implemented, on purpose:**
+
+- *Moonshine as an alternate STT backend* - its docs don't show
+  confirmed support for the `initial_prompt`/vocabulary-biasing
+  `DOMAIN_VOCAB_PROMPT` relies on for philosophy jargon, and there's no
+  way to validate real transcription accuracy against this project's
+  actual speech from this environment. Writing an integration against
+  an unconfirmed API for a component this central, with no way to test
+  it, would be guessing - not implementing. Needs either more research
+  to confirm the API, or Jeff testing it hands-on.
+- *Tiered reasoning effort (skip "low" thinking for simple turns)* - ran
+  into a real blocker while trying to implement it: there is no verified
+  setting below `"low"` for qwen3.8:27b's `think` field. The v2.38
+  CHANGELOG entry (and the module docstring's THINK IS A STRING NOW
+  bullet) documents that sending anything other than `_think_effort()`'s
+  output reproduced the exact empty-reasoning-budget failure this
+  project has spent three versions fixing. Implementing "skip reasoning"
+  would mean re-opening a bug class that's already been closed, for a
+  speed gain that's unverified to even exist. Left alone. If this is
+  worth pursuing later, it needs controlled testing directly against
+  Ollama's API (comparing `think` values on identical prompts) before
+  any code changes - not something to guess at from here.
+
 ## v2.41
 
 Three fixes from reading a real debate transcript (v2.39, predating the

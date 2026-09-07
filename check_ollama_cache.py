@@ -25,7 +25,7 @@ Whisper/Kokoro and opening a mic stream, which we don't want here) so
 this test reflects the actual current prompt cost, not a stale copy.
 
 Run with the same venv python used for the debate bots:
-  "C:\\Users\\dobe2\\open-webui-env\\Scripts\\python.exe" check_ollama_cache.py
+  "%USERPROFILE%\\open-webui-env\\Scripts\\python.exe" check_ollama_cache.py
 
 Expects debate_voice.py to be sitting in the same folder as this script.
 """

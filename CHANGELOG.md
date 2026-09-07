@@ -4,6 +4,93 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## Project review — 2026-09-07 (no code changes)
+
+Jeff asked for a full retrospective: mistakes early in the project that could
+have cascaded forward, and an honest, thoroughly-researched answer to whether
+better hardware or a smaller model is the way to get near-instant responses
+without losing reasoning depth. Full write-up in
+**PROJECT_REVIEW_2026-09-07.md**. Headline findings:
+
+- Six recurring bug classes traced across the full v1.0-v2.45 history, most
+  notably the reasoning-token-budget failure first found in v1.3 and
+  independently reintroduced at least four more times since (deep mode,
+  the qwen3.8 migration, mod/verdict/steelman, memory summarization) - the
+  same underlying question `compare_think_effort.py` is now trying to
+  answer properly instead of by raising another ceiling number.
+- Verdict on hardware: no. The 7900 XTX's memory bandwidth is within ~5% of
+  an RTX 4090's for this exact (bandwidth-bound, single-user) workload;
+  Ollama is confirmed *faster* than vLLM at one concurrent request in
+  current 2026 benchmarks; ROCm is "a real choice" for pure inference. A
+  genuinely faster card (RTX 5090, ~1.87x the bandwidth) would buy roughly
+  1.5-1.8x, not "near instant" - a real option later, not the fix now.
+- Verdict on model size: no. A smaller model reasons worse per token, not
+  less per question - it trades away the exact quality Jeff asked to keep
+  when qwen3.6 was upgraded to qwen3.8. Qwen3's think/no-think toggle is an
+  intentional, documented, first-class feature of the model family, not a
+  hack - reinforces that `think=false` is a legitimate thing to be testing.
+- **Corrected ARCHITECTURE_NOTES.md's headline ~2.7s time-to-first-token
+  figure** - it silently mixed qwen3.6 and qwen3.8 sessions together. The
+  real qwen3.8 number is 7.99-8.53s median, confirmed by two independent
+  full-log analyses (2026-09-04, 2026-09-07). That document's original
+  closing argument ("latency is basically solved, don't chase more speed")
+  was built on the wrong number and is now marked corrected in place rather
+  than left to be cited as settled.
+
+### `compare_think_effort.py` results (2026-09-07) - one caveat, don't ship yet
+
+Jeff ran the tool. Aggregate: **think=low 158.6s, think=false 78.7s, a 2.01x
+speedup** across all 14 cases - matching v2.43's single-question probe
+almost exactly, so the earlier estimate holds up on a real, broader sample.
+
+Case-by-case quality check against each case's EXPECTED behavior:
+
+- **12 of 14 cases: no meaningful difference.** `think=false` answers are
+  shorter/thinner in a couple of spots but not wrong, and in two cases
+  (attribution phrasing on the "who said this" case, terseness on the
+  moderator-brief case) are arguably *more* precisely compliant than
+  `think=low`.
+- **1 bonus win for think=false:** the MIXED-turn case, where `think=low`
+  hit this project's own recurring empty-reply/token-ceiling bug live
+  during the test (`done_reason=length`, empty output) while `think=false`
+  produced a substantive, correctly-scoped answer. One more data point that
+  a smaller reasoning budget is generally *safer* against that bug class,
+  not riskier.
+- **1 real regression: Case 1 (direct question, plain-answer mode).**
+  `think=false`'s reply ends with "What's your argument?" - a direct
+  violation of the specific v2.3 rule this exact test case exists to check
+  ("no 'now give me your argument' tag, no pivot back to debate mode").
+  `think=low` gets this one right.
+
+Per the tool's own built-in decision guidance, one mode-routing miss is
+reason enough to hold off on a global switch. **Recommendation: don't route
+`think=false` in yet.** Rerun Case 1 specifically (temperature is 0.3, so
+one run can be a fluke) a handful more times before deciding whether this
+is systematic or noise. If it's systematic, the fallback isn't "give up on
+this" - it's routing `think=false` only for turn-types that tested clean
+(moderator/mod/verdict/steelman-style, where the mode-pivot rule doesn't
+even apply) and leaving plain Q&A on `think=low` until the prompt itself
+can be made to hold the no-pivot rule under `think=false` too.
+
+### First-turn ~5.4s prompt-eval spike: resolved, not a bug
+
+Jeff's pasted `llama-server` console log from this same test run answers
+the open question from CODE_REVIEW_2026-09-04.md #4 and
+PROJECT_REVIEW_2026-09-07.md Part 5 item 3. It's not a KV-cache-slot issue,
+and `OLLAMA_NUM_PARALLEL=1` (the proposed test) wouldn't change anything -
+it's already the live config (`n_slots=1`, confirmed in the log). What's
+actually happening: `llama-server` does longest-common-prefix prompt
+caching across requests. The ~4270-4320-token SYSTEM_PROMPT (measured for
+the first time from this log, not estimated) is an unchanged prefix on
+every call, so after the very first request it's never re-evaluated -
+only the ~460-610 trailing tokens that differ per turn get processed
+(~800-950ms). The first request of a session pays the full cold-cache cost
+for all ~4300 tokens, which is the entire ~5.4s spike. This is inherent to
+how prompt caching works, not fixable with a launcher flag - the honest
+framing is "the first turn after a restart is always going to cost more,"
+not "there's a bug to find here." Closes out Part 5 item 3 as understood
+rather than open.
+
 ## v2.45
 
 Analyzed a full real debate session (Jeff, 2026-09-06, v2.43, ~1345 lines

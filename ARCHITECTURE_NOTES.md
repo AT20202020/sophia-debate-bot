@@ -193,13 +193,24 @@ this point... the real differentiators are conversational naturalness,
 script adherence, and knowledge grounding" — not shaving another few
 hundred milliseconds
 ([ai.ksopyla.com](https://ai.ksopyla.com/posts/voice-to-voice-models-2026-review/)).
-Sophia's median time-to-first-token is already ~2.7s with a fully local
-27B reasoning model doing real philosophical work — that's a genuinely
-good number for what's being asked of it. The honest recommendation is
-to spend further effort on #1/#2 (the STT hallucination class, since bad
-input actively produces bad *arguments*, not just slow ones) and #4
-(reasoning budget targeting) before chasing more raw speed for its own
-sake.
+
+**CORRECTION (2026-09-07, see PROJECT_REVIEW_2026-09-07.md Part 1.6):** the
+~2.7s figure above was wrong. It mixed 135 qwen3.6 turns (think=False, a
+non-reasoning model) in with the one real qwen3.8 session without separating
+them by model version — the qwen3.6 number alone. Two independent full-log
+analyses since (2026-09-04's code review, and 2026-09-07's full-transcript
+analysis) put the real qwen3.8 median at **7.99s and 8.53s** — three times
+worse, with 46% of turns over 10s in the latest sample. That gap is
+overwhelmingly reasoning tokens (confirmed: "thinking" tokens are streamed
+and shown but never counted toward first_token_time in the code — the
+measured number *is* the reasoning-phase duration, plus a roughly constant
+~2.5s fixed Ollama/prompt-eval floor that's a separate, smaller, still-open
+question). So the conclusion below is reversed from what it says: raw speed
+is very much still worth chasing, via #4 specifically (reasoning-budget
+targeting) — that's now in progress as `compare_think_effort.py`, not a
+"later" item. #1/#2 (the STT hallucination class) remain worth doing too,
+but not as a *substitute* for the speed work this section originally waved
+off.
 
 ## What this rules out, explicitly
 

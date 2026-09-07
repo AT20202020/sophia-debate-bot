@@ -61,7 +61,7 @@ of these reintroduces a bug that took real debugging to find:
     belongs to rather than appending a new free-floating rule, or the
     collisions come back. Run sophia_eval.py after ANY prompt edit.
 """
-VERSION = "2.43"
+VERSION = "2.45"
 
 import sounddevice as sd
 import numpy as np
@@ -275,19 +275,30 @@ def parse_rating(text):
     if m:
         return float(m.group(1))
     words = "|".join(_NUM_WORDS)
+    def to_num(tok):
+        return _NUM_WORDS[tok] if tok in _NUM_WORDS else float(tok)
     # The decimal part must accept number WORDS too, not just digits -
     # otherwise "three point two out of ten" fails the full match, and the
     # regex backtracks into matching just "two out of ten" and returns 2.0.
     m = re.search(
         rf'\b({words}|\d+)\b(?:\s+point\s+({words}|\d))?\s+out\s+of\s+(?:ten|10)', low)
-    if not m:
-        return None
-    def to_num(tok):
-        return _NUM_WORDS[tok] if tok in _NUM_WORDS else float(tok)
-    val = float(to_num(m.group(1)))
-    if m.group(2):
-        val += to_num(m.group(2)) / 10
-    return val
+    if m:
+        val = float(to_num(m.group(1)))
+        if m.group(2):
+            val += to_num(m.group(2)) / 10
+        return val
+    # v2.45: she sometimes phrases a half-point rating conversationally -
+    # "four and a half out of ten" - instead of the "point five" form the
+    # patterns above expect. Confirmed live (2026-09-06 session): both
+    # verdicts that transcript delivered used "and a half" and both
+    # silently failed to parse ("no rating parsed", debate context
+    # unchanged). Handle the phrasing directly rather than trying to get
+    # the model to always say "point five".
+    m = re.search(
+        rf'\b({words}|\d+)\b\s+and\s+a\s+half\s+out\s+of\s+(?:ten|10)', low)
+    if m:
+        return float(to_num(m.group(1))) + 0.5
+    return None
 
 STEELMAN_INSTRUCTION = (
     "Before attacking further: reconstruct the STRONGEST version of the "
@@ -336,6 +347,14 @@ DOMAIN_VOCAB_PROMPT = (
     "multiverse, Occam's razor, emergence, begging the question."
 )
 
+# Kokoro playback speed multiplier - 1.0 is its natural pace. Lowered
+# slightly in v2.44 on live feedback (Jeff, listening on real hardware)
+# that overall delivery felt a touch fast. One named constant instead of
+# three separate 1.25 literals (both tts_pipeline() calls below plus the
+# session config log) that could silently drift out of sync with each
+# other, the same class of bug fixed for NORMAL_NUM_PREDICT in v2.40.
+TTS_SPEED = 1.15
+
 print("Loading models...")
 whisper_model = WhisperModel(WHISPER_MODEL_SIZE, device="cpu", compute_type="int8")
 tts_pipeline = KPipeline(lang_code="a")
@@ -355,7 +374,7 @@ _t0 = time.time()
 # the full path exactly as a live chunk would. Resampled 24kHz -> 16kHz by
 # linear interpolation; no extra dependency needed for a throwaway buffer.
 _warm_gen = tts_pipeline("This is a warm up sentence for the transcriber.",
-                         voice="af_bella", speed=1.25)
+                         voice="af_bella", speed=TTS_SPEED)
 _warm_24k = np.concatenate([a for _, _, a in _warm_gen]).astype(np.float32)
 _warm_audio = np.interp(
     np.linspace(0, len(_warm_24k) - 1, int(len(_warm_24k) * 16000 / 24000)),
@@ -825,8 +844,16 @@ audio_queue = queue.Queue()
 # boundary, shorter after a mid-sentence clause split, so pacing sounds
 # like natural speech rather than audio spliced back-to-back with no gap.
 # (Tune these two numbers directly if the pacing ever feels off again.)
-SENTENCE_PAUSE = np.zeros(int(24000 * 0.03), dtype=np.float32)  # ~30ms
+# v2.44: raised 30ms -> 60ms on live feedback (Jeff, listening on real
+# hardware) that the period pause felt slightly too short after v2.40's
+# silence-trim fix - that fix correctly removed Kokoro's own EXCESS
+# trailing silence, but apparently trimmed enough that this explicit
+# buffer, unchanged since v2.0, was no longer doing enough on its own.
+SENTENCE_PAUSE = np.zeros(int(24000 * 0.06), dtype=np.float32)  # ~60ms
 CLAUSE_PAUSE = np.zeros(int(24000 * 0.01), dtype=np.float32)    # ~10ms
+# (TTS_SPEED, the other half of this same v2.44 tuning pass, is defined
+# earlier - it's needed by the Whisper warm-up's Kokoro call, which runs
+# before this point in the file.)
 
 # Silence prepended to EVERY audio chunk before it is written to the
 # output stream. The stream sits idle between chunks, and on Windows the
@@ -884,7 +911,7 @@ def synth_worker():
         sentence, is_final = item
         try:
             t0 = time.time()
-            generator = tts_pipeline(clean_for_speech(sentence), voice="af_bella", speed=1.25)
+            generator = tts_pipeline(clean_for_speech(sentence), voice="af_bella", speed=TTS_SPEED)
             chunks = [audio for _, _, audio in generator]
             if chunks:
                 full_audio = np.concatenate(chunks).astype(np.float32)
@@ -1646,7 +1673,7 @@ log_event("session", "session started", version=VERSION, voice_activated=VOICE_A
     "num_predict": NORMAL_NUM_PREDICT,
     "temperature": 0.3,
     "voice": "af_bella",
-    "speed": 1.25,
+    "speed": TTS_SPEED,
     "whisper_model": WHISPER_MODEL_SIZE,
     "chunk_seconds": CHUNK_SECONDS,
     "clause_threshold": CLAUSE_THRESHOLD,

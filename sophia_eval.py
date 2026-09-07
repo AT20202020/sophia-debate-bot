@@ -12,9 +12,11 @@ kind of thing this catches.
 
 Each case is a fresh single-turn conversation (system prompt + one user
 message), so cases can't contaminate each other. Generation params match
-debate_voice.py's normal-turn ("low" reasoning effort) settings as of v2.40:
-MODEL qwen3.8:27b, num_ctx 16384, num_predict 450 (NORMAL_NUM_PREDICT),
-temperature 0.3. Update these if debate_voice.py's constants change.
+debate_voice.py's normal-turn ("low" reasoning effort) settings as of v2.45:
+MODEL qwen3.8:27b, num_ctx 16384, num_predict 800 (NORMAL_NUM_PREDICT),
+temperature 0.3. Update these if debate_voice.py's constants change - this
+drifted once already (stayed at 450 after NORMAL_NUM_PREDICT moved to 800
+in v2.43) until this v2.45 pass caught it.
 Note temperature 0.3 is nonzero, so borderline cases can genuinely vary
 between runs - if a case looks wrong, rerun before concluding the prompt
 regressed.
@@ -126,7 +128,7 @@ def run():
                 ],
                 "think": "low",  # qwen3.8:27b takes "low"/"high" strings, not a boolean - see _think_effort() in debate_voice.py
                 "stream": False,
-                "options": {"num_ctx": 16384, "num_predict": 450, "temperature": 0.3},
+                "options": {"num_ctx": 16384, "num_predict": 800, "temperature": 0.3},
                 "keep_alive": -1,
             }, timeout=180)
             text = resp.json().get("message", {}).get("content", "").strip()

@@ -4,6 +4,102 @@ Full version history. Extracted from the `debate_voice.py` module docstring in v
 where it had grown to 396 lines — a quarter of the file.
 
 
+## v2.45
+
+Analyzed a full real debate session (Jeff, 2026-09-06, v2.43, ~1345 lines
+of console log covering three back-to-back debates - teleological/fine-
+tuning, a transcendental/TAG argument, and a long Kalam cosmological
+argument - plus steelman, mod, and two verdict calls). Findings:
+
+**`parse_rating()` fix - "and a half" phrasing.** Both verdicts in that
+session came back unparsed: `--- Verdict delivered (no rating parsed).
+Debate context unchanged - carry on. ---`, even though Sophia clearly
+stated a score both times ("Four and a half out of ten", "Five and a
+half out of ten"). The existing regexes handled digits (`4.5`), `/10`,
+and the word-plus-"point"-plus-word form ("seven point five out of
+ten"), but not the conversational "X and a half out of ten" form she
+apparently defaults to for half-point scores. Added a third fallback
+pattern for that phrasing specifically (2 for 2 in the live transcript,
+0 for 8 on a regression check against every previously-working format).
+This only affects what gets written to the structured log/rating
+history - the spoken verdict itself was never affected, and the debate
+was never actually interrupted by this bug, just silently
+under-recorded.
+
+**Confirms v2.43's fixes are holding up in the wild.** In this same
+session: the whisper.cpp GPU server was correctly skipped in favor of
+CPU transcription (`WHISPER_SERVER_DISABLED=1` doing its job); cross-
+session memory saved successfully three separate times with real,
+substantive summaries (the v2.38/39/41/43 `num_predict` bug class shows
+no sign of recurring); and the `NORMAL_NUM_PREDICT` raise to 800 mostly
+holds - only 2 empty-reply retries across ~39 generation turns (~5%,
+in the range Fable's review estimated), both during the same
+long, multi-turn Kalam exchange where the model's reasoning ran unusually
+long. When the retry does trigger, the cost is steep - 47.74s and
+41.63s time-to-first-token on those two turns, roughly 3-5x a normal
+turn - so this remains a real, if now rarer, failure mode worth
+revisiting if it keeps showing up.
+
+**Time-to-first-token, measured for real:** 37 clean (non-retry) turns
+across the session, mean 9.96s, median 8.53s, range 3.64s-19.65s. 17 of
+37 (46%) were over 10s and 9 were over 15s. No obvious "first turn after
+startup is worst" pattern in this run - the very first generation was
+5.59s, near the low end - so the deferred first-turn KV-cache-miss
+question from the v2.43 review is still open but isn't obviously the
+dominant cost here; the spread looks driven more by how much reasoning
+a given turn's argument needs than by cache state. Content quality
+throughout was strong - Sophia correctly tracked a rambling, multi-turn
+Kalam argument being built live across ~15 fragmented voice turns,
+steelmanned and attacked it coherently, and gave a substantive verdict -
+so this is a latency/logging problem, not a reasoning-quality one.
+
+**Not yet investigated:** a stray `Unknown command '0.'. Press Enter
+alone to talk.` line appeared once, right after a `new` command's
+`[reset primed in 2.0s]` message - harmless (it just re-prompted), but
+the source (transcription pickup, a leftover print, or a race with the
+reset) wasn't tracked down. Low priority unless it recurs.
+
+**New tool: `compare_think_effort.py`.** Every GPU/quant/flash-attention/
+speculative-decoding lever is already at or near its ceiling
+(ARCHITECTURE_NOTES.md); the measured 8.53s median time-to-first-token
+above means the biggest remaining lever is how much qwen3.8:27b reasons
+per turn. `probe_think_effort.py` (v2.43) already showed `think=false`
+running roughly 2x faster than `think="low"` on one question - this new
+script checks whether that holds on QUALITY, not just speed, by running
+`sophia_eval.py`'s full 14-case persona-regression suite at both
+settings and printing both answers next to each case's EXPECTED
+behavior. Not run yet - needs Jeff's machine (the live Ollama instance),
+and it's a real decision either way: `think=false` skipping reasoning
+entirely is a plausible way to break exactly the subtle mode-routing
+judgment calls (question vs. claim, spicy vs. neutral, moderator vs.
+opponent) that this project's past bugs (v2.3/2.7/2.11/2.19/2.22/2.25)
+were all about. Also fixed `sophia_eval.py`'s own `num_predict` - it was
+still hardcoded to 450, unchanged since v2.41, even though
+`NORMAL_NUM_PREDICT` moved to 800 in v2.43. Same stale-literal bug class
+as `TTS_SPEED` and `NORMAL_NUM_PREDICT` itself; now reads 800 to match.
+
+## v2.44
+
+Two small pacing tweaks from actual live listening (Jeff, on real
+hardware) rather than the reasoned-but-unverified estimates most of the
+audio tuning in this project has had to rely on so far:
+
+- **`SENTENCE_PAUSE` raised 30ms -> 60ms.** The v2.40 silence-trim fix
+  correctly removed Kokoro's own excess trailing silence, but trimmed
+  enough that this explicit end-of-sentence buffer - unchanged since
+  v2.0 - was no longer quite enough on its own; the period pause came
+  out slightly too short.
+- **Kokoro playback speed lowered 1.25 -> 1.15**, via a new `TTS_SPEED`
+  constant used everywhere the old `speed=1.25` literal was duplicated
+  (both `tts_pipeline()` call sites and the session config log, which
+  had already drifted apart from the generation calls once - the same
+  stale-literal class of bug fixed for `NORMAL_NUM_PREDICT` in v2.40).
+
+Both are deliberately modest changes ("slightly" was the operative word
+in the feedback) - if either still isn't quite right, they're one-line
+adjustments (`SENTENCE_PAUSE`'s `0.06` and `TTS_SPEED` near the top of
+the file).
+
 ## v2.43
 
 Acted on a second, independent code review (Fable 5.1, given folder access

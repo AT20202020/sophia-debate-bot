@@ -34,7 +34,8 @@ SPEED
 With thinking off, speed is essentially already won (median ~3.6s in the
 eval vs ~12.6s with thinking). So speed is a GUARD here, not the target:
 a change is rejected if the median reply time rises more than 0.5s or the
-median reply length (tokens) grows more than 25%. The target is accuracy -
+median reply length (tokens) grows more than 25%, measured against the
+run's starting baseline so the allowance can't compound round over round. The target is accuracy -
 closing the gap to the thinking-on answer quality.
 
 Note the eval's times include re-reading the full ~4,000-token prompt on
@@ -50,8 +51,9 @@ USAGE
   One supervised round first:
     & $py overnight_loop.py --rounds 1 --baseline eval_runs\\eval_all-v246-nothink_20260910-234702.json
 
-  Overnight:
-    & $py overnight_loop.py --hours 7.5 --baseline eval_runs\\eval_all-v246-nothink_20260910-234702.json
+  Overnight (after a kept round the prompt has changed, so --baseline no
+  longer matches - leave it off and the loop re-measures, ~20 min):
+    & $py overnight_loop.py --hours 7.5
 
   --baseline FILE   reuse an existing `--set all --think false --judge` run of
                     the CURRENT prompt instead of spending ~20 min re-running
@@ -621,8 +623,11 @@ def main():
             log(f"    dev {m1['mean']:.2f} (best {best['dev']['mean']:.2f}), median "
                 f"{m1['median']:.1f}s, tokens {m1['tokens']}")
 
-            slower = (m1["median"] > best["dev"]["median"] + SPEED_GUARD_S or
-                      (best["dev"]["tokens"] and m1["tokens"] > best["dev"]["tokens"] * TOKEN_GUARD))
+            # Guards are measured against the run's BASELINE, not the current
+            # best - otherwise each kept round could add its own +0.5s / +25%
+            # and the allowances would compound over a night.
+            slower = (m1["median"] > base["dev"]["median"] + SPEED_GUARD_S or
+                      (base["dev"]["tokens"] and m1["tokens"] > base["dev"]["tokens"] * TOKEN_GUARD))
             if m1["mean"] < best["dev"]["mean"] + DEV_MARGIN or slower:
                 put_prompt(best["prompt"])
                 h["verdict"] = "rejected: " + ("slower/longer" if slower else "no clear dev gain")

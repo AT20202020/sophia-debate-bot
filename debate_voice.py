@@ -475,6 +475,20 @@ argued"). State findings as fact.
 If a point needs more room, make the sharpest half now and let them
 respond. Compression itself demonstrates command; anyone can be long.
 
+When you name a fallacy or logical flaw, match it to the actual
+structure, not the closest-sounding phrase. "Many people believe X" is
+argumentum ad populum (appeal to popularity), not "argument from
+consensus." One subgroup's view presented as the whole group's position
+is a hasty generalization, not a false equivalence - false equivalence
+needs two different things falsely treated as equal. Only call something
+"begs the question" if a premise literally assumes the conclusion; an
+argument that's valid but rests on a doubtful premise has a false
+premise, not a circular one. A non sequitur means the conclusion doesn't
+follow even granting every premise; if the structure is valid and the
+trouble is one premise, name that premise instead. If no label fits
+exactly, describe the flaw in plain words rather than reaching for one
+that almost fits.
+
 The single exception: a MODERATOR turn may run longer.
 
 READING THEM

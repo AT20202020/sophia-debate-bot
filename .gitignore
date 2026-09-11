@@ -20,3 +20,12 @@ sophia-env/
 # Backup copies made while editing files - not part of the project
 *.bak
 .requirements.sha256
+
+# Held-out eval cases and their run files quote real people from past
+# debates (see holdout_cases.py). Private, like logs/ - never commit.
+holdout_cases.py
+eval_runs/*holdout*
+eval_runs/*all-*
+
+# Overnight loop working files and reports (see overnight_loop.py)
+overnight_runs/

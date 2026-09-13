@@ -805,7 +805,7 @@ def summarize_and_save_memory(convo):
                 "person, factual, no commentary, no markdown."
             ),
         }]
-        resp = requests.post("http://localhost:11434/api/chat", json={
+        resp = requests.post("http://127.0.0.1:11434/api/chat", json={
             "model": "qwen3.8:27b",
             "messages": summary_request,
             "think": "low",
@@ -855,7 +855,7 @@ def prime_model(convo, label="model"):
     prevent."""
     try:
         t0 = time.time()
-        requests.post("http://localhost:11434/api/chat", json={
+        requests.post("http://127.0.0.1:11434/api/chat", json={
             "model": "qwen3.8:27b",
             "messages": convo,
             "think": "low",
@@ -1124,7 +1124,7 @@ def _strip_nonspeech_tags(text):
 # it actually runs on your GPU. If it's not running, this falls back
 # automatically to the CPU model below, so it's safe to leave enabled even
 # before you've set the server up.
-WHISPER_SERVER_URL = "http://localhost:8090/inference"
+WHISPER_SERVER_URL = "http://127.0.0.1:8090/inference"
 
 # Cached after the first attempt so a down/not-yet-set-up server doesn't
 # cost a timeout on every single transcription call for the rest of the
@@ -1423,7 +1423,7 @@ def get_response_streaming(text, interrupt_event=None):
         enclosing call via nonlocal."""
         nonlocal buffer, full_reply, done_reason, first_token_time, thinking_shown, ollama_stats
         try:
-            resp = requests.post("http://localhost:11434/api/chat", json={
+            resp = requests.post("http://127.0.0.1:11434/api/chat", json={
                 "model": "qwen3.8:27b",
                 "messages": conversation,
                 "think": think_flag,

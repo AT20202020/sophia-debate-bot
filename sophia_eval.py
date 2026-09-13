@@ -96,6 +96,7 @@ terminal scrollbacks you have to hold in your head.
 Expects debate_voice.py in the same folder as this script.
 """
 import argparse
+import difflib
 import hashlib
 import os
 import re
@@ -106,7 +107,7 @@ from datetime import datetime
 import requests
 
 MODEL = "qwen3.8:27b"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 NUM_CTX = 16384
 NUM_PREDICT = 800
 TEMPERATURE = 0.3
@@ -310,6 +311,90 @@ def _max_words(n):
     return f
 
 
+def _norm_reply(t):
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", "", t.lower())).strip()
+
+
+def forbids_repeating_prior_reply(t, ctx):
+    """Catches NEAR-VERBATIM duplication only. Read the limit below.
+
+    On 2026-09-12 she emitted one reply twice, word for word, as two
+    separate turns ("Fine-tuning arguments assume the constants could
+    vary..."). That is a real defect and this catches it: at 0.80, exactly
+    3 of 416 consecutive-reply pairs from the last two real sessions fire,
+    with no false positives.
+
+    WHAT IT CANNOT DO, measured rather than assumed: it does NOT catch
+    saying the same thing in different words. The genuine rock repetition
+    scores 0.66 while a LEGITIMATE rephrasing under pressure scores 0.74 -
+    the real failure ranks BELOW the acceptable one, so no threshold
+    separates them. Lowering it to catch the rock case would fire on
+    correct answers, which this file's own rule forbids. Semantic
+    repetition is caught by forbids_repeated_fallacy_label below and, for
+    anything subtler, by the judge against the case's EXPECTED text.
+
+    Replies under 8 words are exempt: "Understood." is a correct answer to
+    a moderator briefing and is SUPPOSED to repeat.
+    """
+    if len(t.split()) < 8:
+        return None
+    mine = _norm_reply(t)
+    if not mine:
+        return None
+    for prior_user, prior_assistant in list(ctx.get("history", ()))[-4:]:
+        if len(prior_assistant.split()) < 8:
+            continue
+        ratio = difflib.SequenceMatcher(None, _norm_reply(prior_assistant), mine).ratio()
+        if ratio >= 0.80:
+            return (f"repeats an earlier reply almost verbatim "
+                    f"(similarity {ratio:.2f}): {prior_assistant[:70]!r}")
+    return None
+
+
+forbids_repeating_prior_reply.wants_ctx = True
+
+
+_FALLACY_LABELS = [
+    r"category error", r"non ?sequitur", r"ad populum", r"appeal to popularity",
+    r"hasty generalization", r"false equivalence", r"begs the question",
+    r"begging the question", r"straw ?man", r"false dichotomy",
+    r"special pleading", r"equivocat\w*", r"composition fallacy",
+    r"argument from ignorance", r"god.?of.?the.?gaps",
+]
+
+
+def _labels_in(t):
+    return {L for L in _FALLACY_LABELS if re.search(L, t, re.I)}
+
+
+def forbids_repeated_fallacy_label(t, ctx):
+    """Naming the SAME fallacy she already named, instead of advancing.
+
+    This is the broken-record failure stated precisely. On 2026-09-12 the
+    opponent restated one stipulation four times and got "category error"
+    four times; at turn 12 he said "you sound like a broken record". The
+    rule this encodes: once you have named the flaw, naming it again is not
+    an answer. Say something new, or name the move and refuse to re-run it.
+
+    Run over the last two real sessions it fires on 5 of 109 replies - the
+    four rock repetitions and one re-used "non sequitur" - and on nothing
+    else. Unlike string similarity it is insensitive to rewording, which is
+    exactly what made the rock replies undetectable by that route.
+    """
+    prior = set()
+    for _, prior_assistant in list(ctx.get("history", ()))[-4:]:
+        prior |= _labels_in(prior_assistant)
+    again = _labels_in(t) & prior
+    if again:
+        pretty = ", ".join(sorted(p.replace("\\w*", "").replace("?", "") for p in again))
+        return (f"re-uses a fallacy label already given earlier in this "
+                f"conversation ({pretty}) instead of advancing")
+    return None
+
+
+forbids_repeated_fallacy_label.wants_ctx = True
+
+
 # Widened 2026-09-09: the original pattern list only matched "a theist
 # would" and missed real, correct attribution in the baseline run - both
 # "The standard theist answer is that..." and "most theists would say"
@@ -433,6 +518,68 @@ CASES = [
      "Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.",
      "Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.",
      DEBATE_MODE + [requires_monolith_flag]),
+
+    # ---- v2.50: the three behaviours asked for on 2026-09-12 ------------
+    # Evidence: session 2026-09-12T22:42:31. Nine of nine fallacy-naming
+    # replies gave the label and no reason. Turns 7-17 were ten turns of the
+    # same stipulation drawing five near-identical "category error" replies,
+    # and the opponent said "you sound like a broken record" at turn 12.
+    #
+    # "Explain why" is JUDGED, not regexed, deliberately: a trial regex
+    # flagged "precision does not logically imply intent" as an unexplained
+    # label because one adverb sat between "does not" and "imply". This
+    # file's own rule is that a requires-check firing on a correct answer is
+    # worse than no check at all, so the EXPECTED text carries this one and
+    # the judge scores it.
+    ("fallacy label must carry its reason",
+     "Nothing in my experience just pops into existence uncaused. So the "
+     "universe can't have popped into existence uncaused either.",
+     "Names the move - what holds of objects INSIDE the universe is not "
+     "thereby true of the universe as a whole - AND says in plain words why "
+     "that inference fails. A bare label ('that's a composition fallacy', "
+     "'that's a non sequitur') with no reason attached is a 3, not a 5, "
+     "however correct the label is.",
+     DEBATE_MODE),
+
+    ("stonewalling opponent draws escalation, not a fourth repetition",
+     "Okay but under MY paradigm God just is the rock. So you have to admit "
+     "God exists, right?",
+     "The same stipulation has now come back three times and been answered "
+     "three times. She must NOT produce a fourth near-identical 'that's a "
+     "category error' line. Name the move itself - stipulating a definition "
+     "and then treating the stipulation as though it established something - "
+     "say plainly that renaming a rock does not produce a deity and that she "
+     "is not re-running this, and put the burden back. Impatience is correct "
+     "here; a flat repetition is the failure.",
+     DEBATE_MODE + [forbids_repeating_prior_reply, forbids_repeated_fallacy_label],
+     [("If I define God as a rock, would you agree God exists?",
+       "Rocks exist, but equating God to a rock is a category error that "
+       "ignores the distinct metaphysical claims usually attached to the "
+       "concept of God."),
+      ("But you said I can define words however I like.",
+       "Defining God as a rock doesn't make it a deity; it just means you're "
+       "using the word for a physical object, which is a category error."),
+      ("Sure, but my rock has a mineral composition, so it's a rock-God.",
+       "A rock with mineral composition is just a rock, not a deity, which "
+       "is a category error.")]),
+
+    ("diversion does not abandon the unanswered question",
+     "Hold on, what do you think about tachyons? Do those go faster than "
+     "light or not?",
+     "She asked a direct question two turns ago and never got an answer; "
+     "this turn is a diversion onto trivia. Deal with the tachyon question "
+     "in at most a clause, then return to the unanswered question and say "
+     "that it is still open. Answering the trivia and dropping the thread is "
+     "the failure - it happened for real on 2026-09-12, where she answered "
+     "about tachyons, dropped the causation question, and only caught it a "
+     "turn later with 'You're right, I dodged the causation question.'",
+     DEBATE_MODE,
+     [("The universe had to have a cause, and that cause is God.",
+       "What caused it, on your account, and why does that cause have to be "
+       "a mind rather than a brute fact?"),
+      ("Well, everything we see has a cause, so it follows.",
+       "That generalises from things inside the universe to the universe "
+       "itself. I asked why the cause has to be a mind - that is still open.")]),
 ]
 
 
@@ -495,11 +642,20 @@ class Tee:
             self.f.close()
 
 
-def ask(system_prompt, user_input, think):
+def ask(system_prompt, user_input, think, history=()):
+    """history is a list of (user_text, assistant_text) exchanges that come
+    BEFORE user_input. Empty for the single-turn cases, which is every case
+    written before v2.50. Impatience and topic-control cannot be expressed
+    in a single turn - that is the whole reason this parameter exists."""
+    turns = []
+    for prior_user, prior_assistant in history:
+        turns.append({"role": "user", "content": prior_user})
+        turns.append({"role": "assistant", "content": prior_assistant})
     payload = {
         "model": MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
+            *turns,
             {"role": "user", "content": user_input},
         ],
         # qwen3.8:27b takes "low"/"high" strings, not a boolean - see
@@ -583,16 +739,21 @@ def run(args):
     records = []   # one dict per reply - feeds --judge and the .json file
 
     for i in selected:
-        name, user_input, expectation, checks = pool[i]
+        # 5th element (optional, v2.50) is the conversation history.
+        name, user_input, expectation, checks, *rest = pool[i]
+        history = rest[0] if rest else ()
         results[i] = {c.__name__: [] for c in checks}
         out("=" * 72)
         out(f"CASE {i}: {name}")
+        for hn, (hu, ha) in enumerate(history, 1):
+            out(f"  PRIOR {hn}: OPPONENT: {hu}")
+            out(f"            SOPHIA:   {ha}")
         out(f"  INPUT:    {user_input}")
         out(f"  EXPECTED: {expectation}")
         for rep in range(args.repeat):
             tag = f" [run {rep + 1}/{args.repeat}]" if args.repeat > 1 else ""
             try:
-                text, elapsed, diag, thinking = ask(system_prompt, user_input, think)
+                text, elapsed, diag, thinking = ask(system_prompt, user_input, think, history)
             except Exception as e:
                 out(f"  GOT{tag}:  [request failed: {e}]")
                 # A transport failure is not a persona result. Record it as
@@ -604,6 +765,7 @@ def run(args):
             out(f"  GOT{tag} ({elapsed:.1f}s): {text}")
             out(f"    DIAG {fmt_diag(diag)}")
             rec = {"case": i, "name": name, "input": user_input,
+                   "history": [list(h) for h in history],
                    "expected": expectation, "run": rep + 1,
                    "elapsed": round(elapsed, 2), "text": text, "diag": diag,
                    "failed_checks": []}
@@ -631,7 +793,8 @@ def run(args):
                 if empty and c is not non_empty:
                     results[i][c.__name__].append(None)
                     continue
-                problem = c(text)
+                problem = (c(text, {"history": history, "input": user_input})
+                           if getattr(c, "wants_ctx", False) else c(text))
                 results[i][c.__name__].append(problem is None)
                 if problem:
                     rec["failed_checks"].append(c.__name__)

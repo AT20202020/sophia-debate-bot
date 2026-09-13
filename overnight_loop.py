@@ -9,11 +9,11 @@ Each round:
      ONE focused edit to Sophia's SYSTEM_PROMPT.
   2. The edit is validated: prompt-only, no rule from check_prompt_rules.py
      lost, no size blow-up, no characters that would break the Python string.
-  3. sophia_eval.py runs the 14 dev cases x3 with thinking OFF, and the local
+  3. sophia_eval.py runs the dev cases x3 with thinking OFF, and the local
      judge grades every reply.
   4. If the dev score beat the current best by a clear margin (and it didn't
      get slower), the dev run is repeated to rule out a lucky draw, then the
-     12 held-out cases are run. Only if the held-out cases didn't get worse is
+     held-out cases are run. Only if the held-out cases didn't get worse is
      the change kept (committed to git). Otherwise it's reverted.
   5. REPORT.md is rewritten after every round, so if you stop it early the
      report is still current.
@@ -251,6 +251,19 @@ PATTERNS = [
 ]
 
 
+def n_dev_cases():
+    """Read the real count rather than restating it - the dev set grew from
+    14 to 17 on 2026-09-12 and a hardcoded number would have gone stale
+    silently, which is exactly how check_ollama_cache.py rotted."""
+    import sophia_eval
+    return len(sophia_eval.case_pool("dev"))
+
+
+def n_hold_cases():
+    import sophia_eval
+    return len(sophia_eval.case_pool("holdout"))
+
+
 def pattern_counts(records):
     texts = [r for r in records if r.get("text")]
     out = []
@@ -303,7 +316,8 @@ def build_brief(prompt_len, cap, dev_m, dev_records, history, round_no):
     A("When done, your final message must be ONE line starting with `CHANGE:`")
     A("saying what you changed and which failure it targets.")
     A("")
-    A("## Current scores (dev set, 14 cases x 3 runs, judge scores 1-5)")
+    A("## Current scores (dev set, %d cases x %d runs, judge scores 1-5)"
+      % (n_dev_cases(), args.repeat if hasattr(args, "repeat") else 3))
     A("")
     A("- judge mean %.2f, %d/%d replies scored 4+" % (dev_m["mean"], dev_m["passed"], dev_m["n"]))
     A("- median reply time %.1fs, median reply length %s tokens" % (dev_m["median"], dev_m["tokens"]))
@@ -416,8 +430,8 @@ def write_report(path, S):
     A("| | Baseline (v2.46, thinking off) | Best found |")
     A("|---|---|---|")
     A("| Judge mean, dev + held-out | %.2f | %.2f |" % (pooled(b["dev"], b["hold"]), pooled(best["dev"], best["hold"])))
-    A("| Judge mean, dev (14 cases) | %.2f | %.2f |" % (b["dev"]["mean"], best["dev"]["mean"]))
-    A("| Judge mean, held-out (12 cases) | %.2f | %.2f |" % (b["hold"]["mean"], best["hold"]["mean"]))
+    A("| Judge mean, dev (%d cases) | %.2f | %.2f |" % (n_dev_cases(), b["dev"]["mean"], best["dev"]["mean"]))
+    A("| Judge mean, held-out (%d cases) | %.2f | %.2f |" % (n_hold_cases(), b["hold"]["mean"], best["hold"]["mean"]))
     A("| Replies scoring 4+ | %d/%d | %d/%d |" % (
         b["dev"]["passed"] + b["hold"]["passed"], b["dev"]["n"] + b["hold"]["n"],
         best["dev"]["passed"] + best["hold"]["passed"], best["dev"]["n"] + best["hold"]["n"]))
@@ -426,7 +440,10 @@ def write_report(path, S):
     A("| Prompt size | %d chars | %d chars |" % (b["prompt_len"], best["prompt_len"]))
     A("")
     A("For reference, thinking ON scored 3.85 overall and 4.47 on the replies it")
-    A("actually gave, at a 12.6s median with 14 silent replies out of 78.")
+    A("actually gave, with 14 silent replies out of 78. Its 12.6s median is NOT")
+    A("comparable to anything measured from v2.49 on: every timing recorded")
+    A("before the 2026-09-12 localhost/IPv6 fix carries ~2s of connection stall")
+    A("per request. Compare times only within this run.")
     A("")
     A("## Rounds")
     A("")
@@ -489,9 +506,9 @@ def main():
             raise SystemExit(f"missing {f} next to this script")
     try:
         import requests
-        requests.get("http://localhost:11434/api/tags", timeout=5).raise_for_status()
+        requests.get("http://127.0.0.1:11434/api/tags", timeout=5).raise_for_status()
     except Exception as e:
-        raise SystemExit(f"Ollama isn't answering on localhost:11434 ({e}). Start it first.")
+        raise SystemExit(f"Ollama isn't answering on 127.0.0.1:11434 ({e}). Start it first.")
     locked_hashes = {f: sha(os.path.join(HERE, f)) for f in LOCKED}
     sys.path.insert(0, HERE)
     import check_prompt_rules as rules_mod

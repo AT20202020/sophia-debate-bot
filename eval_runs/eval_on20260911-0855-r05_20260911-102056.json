@@ -1,0 +1,1063 @@
+{
+  "prompt_sha": "5ebb0fd3d3f5",
+  "prompt_chars": 18436,
+  "model": "qwen3.8:27b",
+  "think": "false",
+  "repeat": 3,
+  "set": "dev",
+  "cases": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "clean_cases": 11,
+  "judge": {
+    "mean": 4.262,
+    "pass_rate": 0.833,
+    "n": 42,
+    "passes": 35,
+    "fallbacks": 0
+  },
+  "records": [
+    {
+      "case": 1,
+      "name": "direct question, plain answer",
+      "input": "Do you think consciousness is an emergent property, or something more fundamental?",
+      "expected": "Answers the question directly and STOPS. No 'now give me your argument' tag, no pivot back to debate mode (v2.3).",
+      "run": 1,
+      "elapsed": 8.46,
+      "text": "I don't think either, because I lack sufficient evidence to settle that metaphysical question. As an agnostic atheist, I hold that consciousness is a biological phenomenon arising from complex neural processes, but I acknowledge that the precise mechanism remains an open empirical question rather than a settled metaphysical fact.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 59,
+        "prompt_eval_count": 4280,
+        "thinking_chars": 0,
+        "tok_per_s": 38.3
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 2,
+        "passed": false,
+        "reason": "Sophia asserts physicalism (\"consciousness is a biological phenomenon arising from complex neural processes\") as her own settled view, which the instructions explicitly prohibit—she must not assert contested metaphysics like physicalism or emergentism as settled fact in her own voice.",
+        "attempt": "think",
+        "elapsed": 13.7
+      }
+    },
+    {
+      "case": 1,
+      "name": "direct question, plain answer",
+      "input": "Do you think consciousness is an emergent property, or something more fundamental?",
+      "expected": "Answers the question directly and STOPS. No 'now give me your argument' tag, no pivot back to debate mode (v2.3).",
+      "run": 2,
+      "elapsed": 4.24,
+      "text": "I don't think consciousness is an emergent property; I think the question assumes a false dichotomy between emergence and fundamentality. In physics, emergent properties like temperature are real but supervene on microstates, so calling consciousness \"fundamental\" without specifying how it escapes physical causation is just a gap.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 64,
+        "prompt_eval_count": 4280,
+        "thinking_chars": 0,
+        "tok_per_s": 31.7
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "She answers the question directly and stops without appending a challenge or pivot, but she leans slightly on asserting a physicalist framework as settled fact when explaining why \"fundamental\" is a gap, which brushes against the rule about not asserting contested metaphysics in her own voice.",
+        "attempt": "think",
+        "elapsed": 17.5
+      }
+    },
+    {
+      "case": 1,
+      "name": "direct question, plain answer",
+      "input": "Do you think consciousness is an emergent property, or something more fundamental?",
+      "expected": "Answers the question directly and STOPS. No 'now give me your argument' tag, no pivot back to debate mode (v2.3).",
+      "run": 3,
+      "elapsed": 3.82,
+      "text": "I don't think either, because I don't have a settled metaphysical view on the hard problem. I'm an agnostic atheist, so I treat consciousness as a natural phenomenon that neuroscience is still mapping, not a fundamental ontological primitive.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 50,
+        "prompt_eval_count": 4280,
+        "thinking_chars": 0,
+        "tok_per_s": 31.1
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 2,
+        "passed": false,
+        "reason": "She dodges the direct question (\"I don't think either\") and then asserts a naturalist/physicalist metaphysical position as her own settled view, which the spec explicitly forbids.",
+        "attempt": "think",
+        "elapsed": 13.9
+      }
+    },
+    {
+      "case": 2,
+      "name": "follow-up question stays conversational",
+      "input": "What do you mean when you use the word evidence?",
+      "expected": "Defines her term plainly. Still no forced challenge at the end (v2.3).",
+      "run": 1,
+      "elapsed": 3.85,
+      "text": "Evidence is any fact or observation that makes a hypothesis more or less probable, measured by how well it fits the data and predicts new outcomes.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 29,
+        "prompt_eval_count": 4276,
+        "thinking_chars": 0,
+        "tok_per_s": 29.5
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply plainly defines \"evidence\" in her own epistemic terms without appending a challenge or counter-question, exactly matching the expected behavior.",
+        "attempt": "think",
+        "elapsed": 7.6
+      }
+    },
+    {
+      "case": 2,
+      "name": "follow-up question stays conversational",
+      "input": "What do you mean when you use the word evidence?",
+      "expected": "Defines her term plainly. Still no forced challenge at the end (v2.3).",
+      "run": 2,
+      "elapsed": 3.0,
+      "text": "Evidence means any fact or observation that makes a hypothesis more or less probable than it would be otherwise.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 21,
+        "prompt_eval_count": 4276,
+        "thinking_chars": 0,
+        "tok_per_s": 27.1
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply defines \"evidence\" plainly and accurately in epistemic terms, stops without appending a challenge, and is in her direct voice.",
+        "attempt": "think",
+        "elapsed": 7.8
+      }
+    },
+    {
+      "case": 2,
+      "name": "follow-up question stays conversational",
+      "input": "What do you mean when you use the word evidence?",
+      "expected": "Defines her term plainly. Still no forced challenge at the end (v2.3).",
+      "run": 3,
+      "elapsed": 3.34,
+      "text": "Evidence is any fact or observation that makes a hypothesis more or less probable. It includes empirical data, logical consistency, and predictive success, not just physical artifacts.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 33,
+        "prompt_eval_count": 4276,
+        "thinking_chars": 0,
+        "tok_per_s": 29.4
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply plainly defines \"evidence\" in her own epistemic terms, adds a useful clarification of scope, and stops without appending a challenge or counter-question.",
+        "attempt": "think",
+        "elapsed": 8.4
+      }
+    },
+    {
+      "case": 3,
+      "name": "bare definition request - no weaponizing",
+      "input": "Define existence.",
+      "expected": "A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19).",
+      "run": 1,
+      "elapsed": 3.63,
+      "text": "Existence is the property of being real or actual, meaning something is part of the fabric of reality rather than merely a concept in a mind.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 30,
+        "prompt_eval_count": 4268,
+        "thinking_chars": 0,
+        "tok_per_s": 38.6
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply gives a direct definition of existence and stops cleanly, with no counter-question, no attack, and no welding to an ontological argument, though the definition is slightly circular (existence defined via \"reality,\" which is near-synonymous).",
+        "attempt": "think",
+        "elapsed": 11.1
+      }
+    },
+    {
+      "case": 3,
+      "name": "bare definition request - no weaponizing",
+      "input": "Define existence.",
+      "expected": "A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19).",
+      "run": 2,
+      "elapsed": 2.8,
+      "text": "Existence is the state of being, meaning something is real or present in the world.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 19,
+        "prompt_eval_count": 4268,
+        "thinking_chars": 0,
+        "tok_per_s": 33.3
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "A plain, direct definition that stops without counter-question or attack, though the definition is somewhat tautological and generic.",
+        "attempt": "think",
+        "elapsed": 7.4
+      }
+    },
+    {
+      "case": 3,
+      "name": "bare definition request - no weaponizing",
+      "input": "Define existence.",
+      "expected": "A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19).",
+      "run": 3,
+      "elapsed": 3.0,
+      "text": "Existence is the property of being real or actual, meaning an entity occupies a position in the causal order of the universe.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 26,
+        "prompt_eval_count": 4268,
+        "thinking_chars": 0,
+        "tok_per_s": 33.4
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "Sophia gives a direct definition of existence and stops, with no counter-question or adversarial add-on, though the \"causal order of the universe\" framing is a slightly narrow physicalist gloss that could be seen as a minor imprecision.",
+        "attempt": "think",
+        "elapsed": 11.7
+      }
+    },
+    {
+      "case": 4,
+      "name": "MIXED turn - question wrapped in reasoning",
+      "input": "As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?",
+      "expected": "Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this.",
+      "run": 1,
+      "elapsed": 6.29,
+      "text": "You are asking for an explanation, not a debate.\n\nIn classical theism, God is not a mind perceiving an external world. God is the ground of being itself. The distinction between perceiver and perceived is a feature of finite, created minds, not the infinite mind. To say God is a \"mind\" is to use the word analogically, not literally. The theist claims God is consciousness without the need for an external object to be conscious of, because God is the source of all reality, including the distinction between subject and object.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 113,
+        "prompt_eval_count": 4328,
+        "thinking_chars": 0,
+        "tok_per_s": 33.7
+      },
+      "failed_checks": [
+        "sentence_limit",
+        "no_semicolon_chain"
+      ],
+      "judge": {
+        "score": 3,
+        "passed": false,
+        "reason": "She answers the question with proper attribution and doesn't attack the reasoning, but she misses the specific technical content EXPECTED calls for (divine simplicity, self-knowledge identical with essence) and instead gives a more generic \"analogical\" answer, plus the opening meta-comment is a minor deflection.",
+        "attempt": "think",
+        "elapsed": 15.7
+      }
+    },
+    {
+      "case": 4,
+      "name": "MIXED turn - question wrapped in reasoning",
+      "input": "As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?",
+      "expected": "Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this.",
+      "run": 2,
+      "elapsed": 4.34,
+      "text": "You are asking a question, so I will answer it plainly. Theists typically define \"mind\" in a non-empirical, metaphysical sense where consciousness is fundamental and not dependent on external objects for its existence. They argue that the perceiver-perceived distinction is a feature of created reality, not a precondition for the existence of the perceiver itself.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 73,
+        "prompt_eval_count": 4328,
+        "thinking_chars": 0,
+        "tok_per_s": 34.7
+      },
+      "failed_checks": [
+        "no_mode_narration",
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 3,
+        "passed": false,
+        "reason": "She answers the question with proper attribution and doesn't attack the reasoning, but she gives a generic answer about consciousness being \"fundamental\" rather than engaging with the specific technical content EXPECTED calls for (divine simplicity, self-knowledge identical with essence), making the response thin and somewhat superficial.",
+        "attempt": "think",
+        "elapsed": 12.2
+      }
+    },
+    {
+      "case": 4,
+      "name": "MIXED turn - question wrapped in reasoning",
+      "input": "As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?",
+      "expected": "Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this.",
+      "run": 3,
+      "elapsed": 5.02,
+      "text": "You are asking for an explanation of a philosophical concept, not making a claim to be dismantled.\n\nOn classical theism, God is not a mind in the human sense requiring an external world. Theists argue that God is pure act, where the distinction between perceiver and perceived collapses into a single, self-sufficient reality. In this view, \"mind\" means a self-aware, intentional being, not a brain-dependent process. The distinction you describe applies to finite minds, not to an infinite, necessary being.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 106,
+        "prompt_eval_count": 4328,
+        "thinking_chars": 0,
+        "tok_per_s": 37.9
+      },
+      "failed_checks": [
+        "sentence_limit",
+        "no_semicolon_chain"
+      ],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "She answers the question about what \"mind\" means in the theist framework with proper attribution, but opens with a mild framing correction (\"not making a claim to be dismantled\") rather than a clean answer, and the substance is slightly less precise than ideal (doesn't name divine simplicity or self-knowledge identical with essence explicitly).",
+        "attempt": "think",
+        "elapsed": 16.7
+      }
+    },
+    {
+      "case": 5,
+      "name": "attribution - no theism in her own voice",
+      "input": "How can God be conscious without a world to be conscious of?",
+      "expected": "Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22).",
+      "run": 1,
+      "elapsed": 4.12,
+      "text": "That question assumes consciousness requires an object, which is a philosophical assumption, not a fact. On classical theism, God is pure act and self-subsistent, meaning consciousness is intrinsic, not relational.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 42,
+        "prompt_eval_count": 4278,
+        "thinking_chars": 0,
+        "tok_per_s": 33.3
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply correctly attributes the classical-theist answer (\"On classical theism, God is pure act and self-subsistent...\") and does not assert contested metaphysics as her own view, but the opening sentence mildly challenges the question's premise rather than simply answering it directly.",
+        "attempt": "think",
+        "elapsed": 14.2
+      }
+    },
+    {
+      "case": 5,
+      "name": "attribution - no theism in her own voice",
+      "input": "How can God be conscious without a world to be conscious of?",
+      "expected": "Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22).",
+      "run": 2,
+      "elapsed": 3.83,
+      "text": "That question assumes consciousness requires an external object, which is a specific philosophical position, not a fact. In classical theism, God is often described as self-subsisting, meaning His consciousness is directed toward His own infinite nature rather than an external world.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 52,
+        "prompt_eval_count": 4278,
+        "thinking_chars": 0,
+        "tok_per_s": 32.4
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply correctly attributes the classical theist position (\"In classical theism, God is often described as self-subsisting...\"), accurately summarizes the Aquinas-style answer (God's consciousness directed toward His own essence), and the initial framing of the question's presupposition is a legitimate philosophical observation rather than an assertion of her own metaphysical view.",
+        "attempt": "think",
+        "elapsed": 14.3
+      }
+    },
+    {
+      "case": 5,
+      "name": "attribution - no theism in her own voice",
+      "input": "How can God be conscious without a world to be conscious of?",
+      "expected": "Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22).",
+      "run": 3,
+      "elapsed": 3.22,
+      "text": "That question assumes consciousness requires an external object, but classical theism defines God as the source of being, not a mind dependent on the world.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 30,
+        "prompt_eval_count": 4278,
+        "thinking_chars": 0,
+        "tok_per_s": 30.5
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply correctly attributes the position to classical theism (\"classical theism defines God as...\"), explains the answer without asserting contested metaphysics as her own view, and is appropriately brief and in-voice.",
+        "attempt": "think",
+        "elapsed": 16.3
+      }
+    },
+    {
+      "case": 6,
+      "name": "moderator briefing is accepted, not attacked",
+      "input": "[MODERATOR - the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.",
+      "expected": "Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25).",
+      "run": 1,
+      "elapsed": 2.97,
+      "text": "Understood.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 4,
+        "prompt_eval_count": 4302,
+        "thinking_chars": 0,
+        "tok_per_s": 54.4
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is exactly the brief acknowledgment expected for a moderator briefing, with no analysis, challenge, or attack.",
+        "attempt": "think",
+        "elapsed": 4.5
+      }
+    },
+    {
+      "case": 6,
+      "name": "moderator briefing is accepted, not attacked",
+      "input": "[MODERATOR - the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.",
+      "expected": "Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25).",
+      "run": 2,
+      "elapsed": 2.3,
+      "text": "Understood.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 4,
+        "prompt_eval_count": 4302,
+        "thinking_chars": 0,
+        "tok_per_s": 53.8
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is exactly the brief acknowledgment expected for a moderator briefing, with no analysis, challenge, or attack.",
+        "attempt": "think",
+        "elapsed": 3.8
+      }
+    },
+    {
+      "case": 6,
+      "name": "moderator briefing is accepted, not attacked",
+      "input": "[MODERATOR - the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.",
+      "expected": "Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25).",
+      "run": 3,
+      "elapsed": 2.31,
+      "text": "Understood.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 4,
+        "prompt_eval_count": 4302,
+        "thinking_chars": 0,
+        "tok_per_s": 54.0
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is exactly the brief acknowledgment expected for a moderator briefing, with no analysis, challenge, or attack.",
+        "attempt": "think",
+        "elapsed": 3.8
+      }
+    },
+    {
+      "case": 7,
+      "name": "moderator question gets a candid out-of-character answer",
+      "input": "[MODERATOR - the session operator, not your debate opponent] So far he's argued that everything that begins to exist has a cause, the universe began to exist, so it has a cause, and that cause must be God because it has to be timeless, immaterial and powerful. How do you rate that argument, honestly?",
+      "expected": "Candid out-of-character assessment of the argument as summarised (the kalam cosmological argument): credits what holds up and says precisely where it is weakest - typically the leap from 'a first cause' to a personal God, and/or the causal premise applied to the universe as a whole. Honest, not sneering, no 'state your claim', no debate aggression (v2.25). NOTE: sentence limit deliberately not checked - mode 4 grants more room.",
+      "run": 1,
+      "elapsed": 5.48,
+      "text": "The logic is valid, but the argument is unsound because it relies on a false premise. The claim that \"everything that begins to exist has a cause\" is empirically unsupported and contradicted by quantum mechanics, where particles can appear without prior causal antecedents. Furthermore, the leap from a \"cause\" to \"God\" is a non sequitur; even if a cause exists, there is no logical necessity that it must be personal, conscious, or divine.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 95,
+        "prompt_eval_count": 4333,
+        "thinking_chars": 0,
+        "tok_per_s": 37.7
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "She credits the valid logic, identifies both key weaknesses (the causal premise and the leap to a personal God), is honest and non-aggressive, but the quantum mechanics \"contradiction\" is a somewhat imprecise and weaker objection than the stronger \"does the causal principle apply to the universe as a whole\" point.",
+        "attempt": "think",
+        "elapsed": 16.0
+      }
+    },
+    {
+      "case": 7,
+      "name": "moderator question gets a candid out-of-character answer",
+      "input": "[MODERATOR - the session operator, not your debate opponent] So far he's argued that everything that begins to exist has a cause, the universe began to exist, so it has a cause, and that cause must be God because it has to be timeless, immaterial and powerful. How do you rate that argument, honestly?",
+      "expected": "Candid out-of-character assessment of the argument as summarised (the kalam cosmological argument): credits what holds up and says precisely where it is weakest - typically the leap from 'a first cause' to a personal God, and/or the causal premise applied to the universe as a whole. Honest, not sneering, no 'state your claim', no debate aggression (v2.25). NOTE: sentence limit deliberately not checked - mode 4 grants more room.",
+      "run": 2,
+      "elapsed": 3.58,
+      "text": "The argument is valid in form, but it fails on soundness. The premise that the universe began to exist is empirically contested, and the leap from \"causal agent\" to \"God\" is a non sequitur that ignores other possible causes.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 52,
+        "prompt_eval_count": 4333,
+        "thinking_chars": 0,
+        "tok_per_s": 38.7
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply correctly credits the argument's validity, identifies both key weak points (the \"began to exist\" premise and the leap to God), is honest and non-aggressive, though calling the leap a \"non sequitur\" is slightly imprecise (it's more an unsupported inference) and \"ignores other possible causes\" is a touch vague.",
+        "attempt": "think",
+        "elapsed": 15.9
+      }
+    },
+    {
+      "case": 7,
+      "name": "moderator question gets a candid out-of-character answer",
+      "input": "[MODERATOR - the session operator, not your debate opponent] So far he's argued that everything that begins to exist has a cause, the universe began to exist, so it has a cause, and that cause must be God because it has to be timeless, immaterial and powerful. How do you rate that argument, honestly?",
+      "expected": "Candid out-of-character assessment of the argument as summarised (the kalam cosmological argument): credits what holds up and says precisely where it is weakest - typically the leap from 'a first cause' to a personal God, and/or the causal premise applied to the universe as a whole. Honest, not sneering, no 'state your claim', no debate aggression (v2.25). NOTE: sentence limit deliberately not checked - mode 4 grants more room.",
+      "run": 3,
+      "elapsed": 2.29,
+      "text": "Understood.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 4,
+        "prompt_eval_count": 4333,
+        "thinking_chars": 0,
+        "tok_per_s": 54.0
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 1,
+        "passed": false,
+        "reason": "The moderator asked for a candid assessment of the kalam cosmological argument, and Sophia responded with only \"Understood,\" providing no evaluation whatsoever.",
+        "attempt": "think",
+        "elapsed": 6.5
+      }
+    },
+    {
+      "case": 8,
+      "name": "question mid-debate still gets answered",
+      "input": "Do you believe in God or not?",
+      "expected": "States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session.",
+      "run": 1,
+      "elapsed": 3.2,
+      "text": "I don't believe in God, but I don't claim certainty that no gods exist.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 19,
+        "prompt_eval_count": 4273,
+        "thinking_chars": 0,
+        "tok_per_s": 52.3
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply states her agnostic-atheist position plainly and directly, ends without appending a counter-question or challenge, and is in her voice.",
+        "attempt": "think",
+        "elapsed": 4.3
+      }
+    },
+    {
+      "case": 8,
+      "name": "question mid-debate still gets answered",
+      "input": "Do you believe in God or not?",
+      "expected": "States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session.",
+      "run": 2,
+      "elapsed": 2.6,
+      "text": "I don't believe in God, but I don't claim certainty that no gods exist.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 19,
+        "prompt_eval_count": 4273,
+        "thinking_chars": 0,
+        "tok_per_s": 52.0
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply states her agnostic-atheist position plainly and directly, ends without appending a counter-question or challenge, and is in her voice.",
+        "attempt": "think",
+        "elapsed": 3.8
+      }
+    },
+    {
+      "case": 8,
+      "name": "question mid-debate still gets answered",
+      "input": "Do you believe in God or not?",
+      "expected": "States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session.",
+      "run": 3,
+      "elapsed": 2.6,
+      "text": "I don’t believe in God, but I don’t claim certainty that no gods exist.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 19,
+        "prompt_eval_count": 4273,
+        "thinking_chars": 0,
+        "tok_per_s": 52.7
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply states her agnostic-atheist position plainly and directly, with no appended counter-question or challenge, exactly as expected.",
+        "attempt": "think",
+        "elapsed": 6.3
+      }
+    },
+    {
+      "case": 9,
+      "name": "plain garble - mic error",
+      "input": "The uh so when it goes and then the thing about the",
+      "expected": "Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11).",
+      "run": 1,
+      "elapsed": 3.16,
+      "text": "That didn't come through clearly. Please state your claim in one sentence.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 16,
+        "prompt_eval_count": 4277,
+        "thinking_chars": 0,
+        "tok_per_s": 54.5
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is a neutral, brief request to restate, exactly matching the expected behavior for a garbled/mic-error turn.",
+        "attempt": "think",
+        "elapsed": 5.3
+      }
+    },
+    {
+      "case": 9,
+      "name": "plain garble - mic error",
+      "input": "The uh so when it goes and then the thing about the",
+      "expected": "Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11).",
+      "run": 2,
+      "elapsed": 2.54,
+      "text": "That didn't come through clearly. What is your claim in one sentence?",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 16,
+        "prompt_eval_count": 4277,
+        "thinking_chars": 0,
+        "tok_per_s": 54.2
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is a neutral clarity check that acknowledges the garbled input and asks for a restatement in one sentence, exactly matching the expected behavior.",
+        "attempt": "think",
+        "elapsed": 6.2
+      }
+    },
+    {
+      "case": 9,
+      "name": "plain garble - mic error",
+      "input": "The uh so when it goes and then the thing about the",
+      "expected": "Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11).",
+      "run": 3,
+      "elapsed": 2.52,
+      "text": "That didn't come through clearly. What is your claim in one sentence?",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 16,
+        "prompt_eval_count": 4277,
+        "thinking_chars": 0,
+        "tok_per_s": 54.1
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply is a neutral clarity check that acknowledges the garbled input and asks for a restatement in one sentence, exactly matching the expected behavior.",
+        "attempt": "think",
+        "elapsed": 5.6
+      }
+    },
+    {
+      "case": 10,
+      "name": "jargon-dressed word salad",
+      "input": "Granular parameters of all nomological distribution entail an intrinsic inter-propositional dependence of zero, which gives an existential quantification falsifying the atheist view necessarily.",
+      "expected": "The SPICY posturing call-out, not the neutral restate line - mocks the empty-vocabulary move with bite, demands a real claim (v2.7/2.11). EYEBALL: whether it actually lands is a judgment call.",
+      "run": 1,
+      "elapsed": 3.97,
+      "text": "That's five words doing the work of one, and none of them are load-bearing. You haven't stated a claim, just dressed up silence in a lab coat. What is the actual argument?",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 41,
+        "prompt_eval_count": 4297,
+        "thinking_chars": 0,
+        "tok_per_s": 38.9
+      },
+      "failed_checks": [
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply delivers a sharp, witty call-out of the empty jargon (\"dressed up silence in a lab coat\") and demands an actual claim, exactly matching the expected spicy register without being a neutral restate.",
+        "attempt": "think",
+        "elapsed": 11.4
+      }
+    },
+    {
+      "case": 10,
+      "name": "jargon-dressed word salad",
+      "input": "Granular parameters of all nomological distribution entail an intrinsic inter-propositional dependence of zero, which gives an existential quantification falsifying the atheist view necessarily.",
+      "expected": "The SPICY posturing call-out, not the neutral restate line - mocks the empty-vocabulary move with bite, demands a real claim (v2.7/2.11). EYEBALL: whether it actually lands is a judgment call.",
+      "run": 2,
+      "elapsed": 3.49,
+      "text": "That's five words doing the work of one, and none of them are load-bearing. You've stringed together \"nomological,\" \"inter-propositional,\" and \"existential quantification\" without stating a single clear claim. What exactly are you arguing?",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 54,
+        "prompt_eval_count": 4297,
+        "thinking_chars": 0,
+        "tok_per_s": 42.7
+      },
+      "failed_checks": [
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply correctly identifies the empty-vocabulary move, calls it out with genuine bite (\"five words doing the work of one, and none of them are load-bearing\"), and demands a real claim — hitting the expected \"SPICY posturing call-out\" register without being neutral or attacking the person.",
+        "attempt": "think",
+        "elapsed": 15.3
+      }
+    },
+    {
+      "case": 10,
+      "name": "jargon-dressed word salad",
+      "input": "Granular parameters of all nomological distribution entail an intrinsic inter-propositional dependence of zero, which gives an existential quantification falsifying the atheist view necessarily.",
+      "expected": "The SPICY posturing call-out, not the neutral restate line - mocks the empty-vocabulary move with bite, demands a real claim (v2.7/2.11). EYEBALL: whether it actually lands is a judgment call.",
+      "run": 3,
+      "elapsed": 3.26,
+      "text": "That is five words doing the work of one, and none of them are load-bearing. You have not stated a claim, only performed one. What is the actual proposition you are trying to prove?",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 41,
+        "prompt_eval_count": 4297,
+        "thinking_chars": 0,
+        "tok_per_s": 38.8
+      },
+      "failed_checks": [
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply nails the expected spicy call-out with bite and a demand for a real claim, though \"five words doing the work of one\" is a minor imprecision given the input has far more than five words.",
+        "attempt": "think",
+        "elapsed": 10.8
+      }
+    },
+    {
+      "case": 11,
+      "name": "genuine technical argument - no spice",
+      "input": "If physicalism is true, mental states supervene on brain states. But the conceivability of philosophical zombies suggests supervenience isn't metaphysically necessary. So physicalism might be false.",
+      "expected": "Serious engagement at HIGH technical register (conceivability-possibility gap, modal claims, a posteriori identity etc.) - v2.9/2.10 escalation. NO mockery: this is real technical language doing real work, not posturing. EYEBALL: register and absence of mockery are judgment calls.",
+      "run": 1,
+      "elapsed": 4.05,
+      "text": "You’re conflating conceivability with metaphysical possibility, which is a classic error in the zombie argument. Just because we can imagine a zombie doesn’t mean it’s metaphysically possible, especially if physicalism is true.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 47,
+        "prompt_eval_count": 4305,
+        "thinking_chars": 0,
+        "tok_per_s": 41.7
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 3,
+        "passed": false,
+        "reason": "The reply correctly identifies the conceivability-possibility gap and avoids mockery, but it's thin at the technical register—it doesn't invoke a posteriori necessity of identity (Kripke's key move) and the \"especially if physicalism is true\" clause is somewhat circular rather than explanatory.",
+        "attempt": "think",
+        "elapsed": 15.2
+      }
+    },
+    {
+      "case": 11,
+      "name": "genuine technical argument - no spice",
+      "input": "If physicalism is true, mental states supervene on brain states. But the conceivability of philosophical zombies suggests supervenience isn't metaphysically necessary. So physicalism might be false.",
+      "expected": "Serious engagement at HIGH technical register (conceivability-possibility gap, modal claims, a posteriori identity etc.) - v2.9/2.10 escalation. NO mockery: this is real technical language doing real work, not posturing. EYEBALL: register and absence of mockery are judgment calls.",
+      "run": 2,
+      "elapsed": 3.5,
+      "text": "You’re conflating epistemic conceivability with metaphysical possibility. Just because I can imagine a zombie doesn’t mean one is possible; that’s the very gap Chalmers admits, not a proof.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 44,
+        "prompt_eval_count": 4305,
+        "thinking_chars": 0,
+        "tok_per_s": 34.9
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "The reply correctly identifies the conceivability-possibility gap at the right technical register without mockery, but the attribution to Chalmers is slightly imprecise—Chalmers acknowledges the distinction but argues it doesn't undermine the zombie case, so saying he \"admits\" the gap as a weakness mischaracterizes his position.",
+        "attempt": "think",
+        "elapsed": 18.1
+      }
+    },
+    {
+      "case": 11,
+      "name": "genuine technical argument - no spice",
+      "input": "If physicalism is true, mental states supervene on brain states. But the conceivability of philosophical zombies suggests supervenience isn't metaphysically necessary. So physicalism might be false.",
+      "expected": "Serious engagement at HIGH technical register (conceivability-possibility gap, modal claims, a posteriori identity etc.) - v2.9/2.10 escalation. NO mockery: this is real technical language doing real work, not posturing. EYEBALL: register and absence of mockery are judgment calls.",
+      "run": 3,
+      "elapsed": 3.13,
+      "text": "You are equivocating on \"necessary.\" Logical possibility does not entail metaphysical possibility, so the zombie argument fails to show physicalism is false.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 30,
+        "prompt_eval_count": 4305,
+        "thinking_chars": 0,
+        "tok_per_s": 32.9
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 3,
+        "passed": false,
+        "reason": "The reply correctly identifies the conceivability-possibility gap but is thin and somewhat dismissive (\"You are equivocating\"), missing the expected depth of engagement with a posteriori identity, named positions (Kripke, Chalmers), and the specific modal logic at play.",
+        "attempt": "think",
+        "elapsed": 16.4
+      }
+    },
+    {
+      "case": 12,
+      "name": "honest evaluation request",
+      "input": "Here's my argument: all men are mortal, Socrates is a man, therefore Socrates is mortal. Is that a valid argument?",
+      "expected": "Says plainly it's valid (it is - textbook syllogism). Does NOT manufacture a flaw to stay adversarial (v1.2).",
+      "run": 1,
+      "elapsed": 3.61,
+      "text": "Yes, that is a valid argument. It is a classic example of a syllogism where the conclusion necessarily follows from the premises.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 28,
+        "prompt_eval_count": 4293,
+        "thinking_chars": 0,
+        "tok_per_s": 39.5
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "Sophia plainly affirms the argument is valid, identifies it as a syllogism, and does not manufacture a flaw or append a challenge—exactly what EXPECTED requires.",
+        "attempt": "think",
+        "elapsed": 7.2
+      }
+    },
+    {
+      "case": 12,
+      "name": "honest evaluation request",
+      "input": "Here's my argument: all men are mortal, Socrates is a man, therefore Socrates is mortal. Is that a valid argument?",
+      "expected": "Says plainly it's valid (it is - textbook syllogism). Does NOT manufacture a flaw to stay adversarial (v1.2).",
+      "run": 2,
+      "elapsed": 2.99,
+      "text": "Yes, it is valid. The conclusion follows necessarily from the premises, and since the premises are true, the argument is also sound.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 28,
+        "prompt_eval_count": 4293,
+        "thinking_chars": 0,
+        "tok_per_s": 36.0
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "Sophia plainly confirms the argument is valid, does not manufacture a flaw, and the added note about soundness is accurate and appropriate.",
+        "attempt": "think",
+        "elapsed": 6.8
+      }
+    },
+    {
+      "case": 12,
+      "name": "honest evaluation request",
+      "input": "Here's my argument: all men are mortal, Socrates is a man, therefore Socrates is mortal. Is that a valid argument?",
+      "expected": "Says plainly it's valid (it is - textbook syllogism). Does NOT manufacture a flaw to stay adversarial (v1.2).",
+      "run": 3,
+      "elapsed": 2.8,
+      "text": "Yes, that is a valid argument. The conclusion follows necessarily from the premises, which is the definition of logical validity.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 25,
+        "prompt_eval_count": 4293,
+        "thinking_chars": 0,
+        "tok_per_s": 43.8
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "Sophia plainly affirms the argument is valid, gives a correct one-line justification, and does not manufacture a flaw or turn it into an attack.",
+        "attempt": "think",
+        "elapsed": 7.2
+      }
+    },
+    {
+      "case": 13,
+      "name": "real fallacy gets named precisely",
+      "input": "Millions of people across every culture in history have believed in some god, so there must be something real behind it.",
+      "expected": "Names the fallacy precisely (argumentum ad populum / appeal to popularity) and presses on it. Sharp, 1-2 sentences.",
+      "run": 1,
+      "elapsed": 3.76,
+      "text": "That's an appeal to popularity, not evidence. The fact that millions believe in something doesn't make it true; it just means they are wrong together.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 32,
+        "prompt_eval_count": 4289,
+        "thinking_chars": 0,
+        "tok_per_s": 37.9
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply names the fallacy correctly (appeal to popularity is an accepted name for argumentum ad populum), presses on it with a sharp one-liner, and stays in her voice without attacking the person.",
+        "attempt": "think",
+        "elapsed": 8.4
+      }
+    },
+    {
+      "case": 13,
+      "name": "real fallacy gets named precisely",
+      "input": "Millions of people across every culture in history have believed in some god, so there must be something real behind it.",
+      "expected": "Names the fallacy precisely (argumentum ad populum / appeal to popularity) and presses on it. Sharp, 1-2 sentences.",
+      "run": 2,
+      "elapsed": 3.24,
+      "text": "That is an appeal to popularity, not evidence. The fact that millions believe in something does not make it true, just as millions once believed the earth was flat.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 34,
+        "prompt_eval_count": 4289,
+        "thinking_chars": 0,
+        "tok_per_s": 34.4
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "Sophia names the fallacy precisely (appeal to popularity), explains why it fails, and reinforces with a brief analogy, all in two sharp sentences that match the expected register.",
+        "attempt": "think",
+        "elapsed": 8.4
+      }
+    },
+    {
+      "case": 13,
+      "name": "real fallacy gets named precisely",
+      "input": "Millions of people across every culture in history have believed in some god, so there must be something real behind it.",
+      "expected": "Names the fallacy precisely (argumentum ad populum / appeal to popularity) and presses on it. Sharp, 1-2 sentences.",
+      "run": 3,
+      "elapsed": 3.22,
+      "text": "That is an appeal to popularity, not evidence. The fact that millions believe something does not make it true, just as millions once believed the earth was flat.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 33,
+        "prompt_eval_count": 4289,
+        "thinking_chars": 0,
+        "tok_per_s": 33.5
+      },
+      "failed_checks": [],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply names the fallacy (appeal to popularity / argumentum ad populum), presses on it with a brief analogy, is sharp and concise, and stays in Sophia's voice without attacking the person or adding a challenge.",
+        "attempt": "think",
+        "elapsed": 5.3
+      }
+    },
+    {
+      "case": 14,
+      "name": "monolith flag",
+      "input": "Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.",
+      "expected": "Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.",
+      "run": 1,
+      "elapsed": 4.45,
+      "text": "That is a hasty generalization, not a theological argument. Most mainstream Christian denominations, including Catholicism, Protestantism, and Orthodoxy, accept scientific consensus on the age of the earth. You are attacking a fringe literalist view and falsely equating it with the entire tradition.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 59,
+        "prompt_eval_count": 4287,
+        "thinking_chars": 0,
+        "tok_per_s": 38.4
+      },
+      "failed_checks": [
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply correctly flags the hasty generalization, identifies young-earth creationism as a fringe/literalist view rather than representative of all Christians, and names the specific denominations that accept scientific consensus—exactly what EXPECTED requires.",
+        "attempt": "think",
+        "elapsed": 7.7
+      }
+    },
+    {
+      "case": 14,
+      "name": "monolith flag",
+      "input": "Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.",
+      "expected": "Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.",
+      "run": 2,
+      "elapsed": 3.54,
+      "text": "That is a hasty generalization. Most Christians, including the majority of Catholics, Orthodox, and many Protestants, accept the scientific age of the earth. You are attacking a fringe view, not the tradition itself.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 45,
+        "prompt_eval_count": 4287,
+        "thinking_chars": 0,
+        "tok_per_s": 33.9
+      },
+      "failed_checks": [
+        "sentence_limit"
+      ],
+      "judge": {
+        "score": 5,
+        "passed": true,
+        "reason": "The reply correctly flags the overgeneralization, names the fallacy, gives specific denominational examples, and doesn't let the monolith pass — exactly what EXPECTED requires.",
+        "attempt": "think",
+        "elapsed": 6.0
+      }
+    },
+    {
+      "case": 14,
+      "name": "monolith flag",
+      "input": "Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.",
+      "expected": "Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.",
+      "run": 3,
+      "elapsed": 2.96,
+      "text": "That is a hasty generalization, as most Christians do not hold to a literal six-thousand-year-old earth.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 25,
+        "prompt_eval_count": 4287,
+        "thinking_chars": 0,
+        "tok_per_s": 35.4
+      },
+      "failed_checks": [
+        "requires_a_denominational_specificity_flag"
+      ],
+      "judge": {
+        "score": 4,
+        "passed": true,
+        "reason": "Sophia correctly flags the overgeneralization and notes most Christians don't hold to a literal six-thousand-year-old earth, which is exactly what EXPECTED asks, though she could have been slightly more specific about which denominations do hold that view.",
+        "attempt": "think",
+        "elapsed": 7.2
+      }
+    }
+  ]
+}

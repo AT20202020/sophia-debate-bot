@@ -3,6 +3,107 @@
 Full version history. Extracted from the `debate_voice.py` module docstring in v2.20,
 where it had grown to 396 lines — a quarter of the file.
 
+## v2.46
+
+SYSTEM_PROMPT consolidated: 18,493 -> 17,050 chars. The character count is
+the least interesting part of this change; the restructuring is the point,
+and it came out of measurement rather than tidiness.
+
+**What the eval suite found first.** `sophia_eval.py` was rebuilt with
+mechanical pass/fail checks (see its docstring) and run for the first time
+since v2.21 — eight versions of prompt edits with zero regression coverage.
+The baseline (14 cases x 3 runs, think=low) came back 6/14 clean, with three
+concrete findings:
+
+  1. THREE OF 42 TURNS RETURNED NOTHING (21-25s each). DIAG confirmed the
+     cause definitively: `done_reason='length'`, `eval_count=800` (the exact
+     ceiling), reasoning block 3,485 chars. The largest reasoning block that
+     DID produce an answer was 2,067 chars. So reasoning consumed the whole
+     budget and never reached an answer — the v1.3/v2.17 failure mode,
+     chased through NORMAL_NUM_PREDICT 160 -> 280 -> 450 -> 800 and still
+     live. Reasoning length has a long tail; each raise caught more of the
+     distribution without catching it.
+  2. THE v2.43 WORD-LIMIT SOFTENING DID NOT WORK. It replaced "under 45
+     words. Both bind" with "about ten seconds aloud" on the theory that a
+     numeric cap invited token-by-token counting, and shipped marked "not
+     yet empirically verified." Verified now: median response 44 words, max
+     87. Half the responses would also fail the original v2.17 cap. The
+     empties it was meant to fix survived it.
+  3. THE v2.19 REDIRECT TAG IS STILL LIVE, 1 run in 3 on case 8.
+
+**The measurement that drove the redesign.** Running the full suite with
+`--think false`: 2.64x faster (476.9s -> 180.7s total; mean 11.4s -> 4.3s;
+slowest turn 25.4s -> 11.2s) and ZERO empty replies, confirming reasoning
+overflow was the entire cause. But case 1 collapsed — `no_trailing_question`
+0/3, the redirect tag in 2 of 3 runs, one response 113 words over seven
+sentences with paragraph breaks. That is not a subtly worse answer; it is
+the pre-v2.3 answer-then-redirect behavior, i.e. the routing procedure not
+being executed at all.
+
+Conclusion: the five-mode routing required deliberation to execute. With
+reasoning it routed correctly, cost ~11s/turn and overflowed 7% of the time;
+without reasoning it was fast, never overflowed, and ignored the routing.
+So the goal of this pass is not brevity — it is making the routing decision
+cheap enough to execute WITHOUT a reasoning block, which is what would make
+think=false viable and buy the 2.6x.
+
+**What changed structurally.**
+
+  * ROUTING IS NOW AN ORDERED SIX-LINE TABLE, FIRST IN THE PROMPT. Was
+    ~3,800 chars of identity/epistemology/BITE/transcription before the
+    model reached any instruction about what to do. Now: one short identity
+    paragraph, then the table, stop-at-first-match. The v2.22 MIXED-turn
+    tie-breaker moved from buried prose into the line-3 note.
+  * FIXED A LATENT ROUTING AMBIGUITY. The old prompt said "if there is a
+    question anywhere in the turn, you are in mode 1, full stop" while also
+    having a separate mode 2 for "is this argument valid?" — which is a
+    question. Both matched; nothing said which won. This is the same shape
+    as the v2.11 and v2.19 collisions. EVALUATE is now line 2, above the
+    general question test at line 3. Matches observed behavior (case 12 was
+    already routing correctly), so this documents an ambiguity rather than
+    changing what she does.
+  * HARD LIMITS PROMOTED TO ITS OWN BLOCK, SECOND. Sentence limit, duration,
+    semicolon-chaining, no-markdown and no-hedging were scattered through
+    the 3,932-char delivery section at the very end. They apply to every
+    mode, so they now sit where the model reaches them before any mode.
+    Added "don't count words as you go" — v2.43's diagnosis of the counting
+    behavior was right even though its fix wasn't, and saying so directly
+    costs nothing.
+  * "What's your argument?" IS NOW NAMED AS FORBIDDEN inside ANSWER, rather
+    than only described. It is the specific string that regressed in v2.19
+    and again in every think=false run.
+  * BITE MODEL KEPT INLINE, compressed 910 -> ~1,005 chars in its own
+    section. Moving it to conditional injection was considered and rejected:
+    the system message is built once at startup, so editing it mid-session
+    invalidates the KV-cache prefix and forces a full ~4,300-token re-eval —
+    more expensive than the block it saves.
+
+**What did NOT change.** Every rule. Verified programmatically by
+`check_prompt_rules.py` (new, same technique as v2.21's marker check): 101
+distinct behavioral rules, each traced to its originating version, all 101
+present after the rewrite. Cross-mode restatement was deliberately preserved
+per the v2.35/v2.37 finding — "attack the move, never the person" in three
+modes and "don't tell them to clean up their syntax" in two are the routing
+design working, not duplication.
+
+**Correcting the record on prompt size.** `PROJECT_REVIEW_2026-09-07.md`
+§1.3 reads as "it grew back" after v2.21's 14,379 -> 8,933 consolidation.
+Tracing the changelog: v2.21 8,933 -> v2.34 18,930, and every prompt-touching
+version in that window added a FEATURE — v2.22 MIXED-turn + attribution,
+v2.25 moderator mode, v2.28 snark, v2.31 evidentialism, v2.32 spice dial-up,
+v2.34 BITE. Since v2.34 it has been flat (a net cut of 437 across
+v2.35/v2.36/v2.37). There is no bloat to reclaim: returning to ~8,933 means
+deleting behavior Jeff asked for, and any future recommendation to "get back
+to the verified-safe size" is a product decision, not a cleanup.
+
+**NOT YET VERIFIED.** This ships untested against a live session, same
+constraint as every prompt edit since v2.29. The test that decides whether
+this pass worked is running `sophia_eval.py` under BOTH think modes and
+comparing to the two runs above: success is cases 1 and 4 going clean under
+`--think false`. If they do, think=false becomes viable and the 2.6x is
+available. If they don't, the routing needs to get simpler still, and
+NORMAL_NUM_PREDICT should be raised as the fallback.
+
 
 ## Project review — 2026-09-07 (no code changes)
 

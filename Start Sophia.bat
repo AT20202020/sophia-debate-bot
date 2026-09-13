@@ -212,7 +212,7 @@ set "OLLAMA_KV_CACHE_TYPE=q8_0"
 
 REM --- Make sure Ollama is running -----------------------------------------
 echo Checking if Ollama is running...
-curl -s -o NUL -w "%%{http_code}" http://localhost:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
+curl -s -o NUL -w "%%{http_code}" http://127.0.0.1:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
 set /p OLLAMA_STATUS=<"%TEMP%\sophia_ollama_check.txt"
 
 if "!OLLAMA_STATUS!"=="200" (
@@ -225,7 +225,7 @@ if "!OLLAMA_STATUS!"=="200" (
     set OLLAMA_READY=0
     for /L %%i in (1,1,15) do (
         if "!OLLAMA_READY!"=="0" (
-            curl -s -o NUL -w "%%{http_code}" http://localhost:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
+            curl -s -o NUL -w "%%{http_code}" http://127.0.0.1:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
             set /p OLLAMA_STATUS=<"%TEMP%\sophia_ollama_check.txt"
             if "!OLLAMA_STATUS!"=="200" (
                 set OLLAMA_READY=1

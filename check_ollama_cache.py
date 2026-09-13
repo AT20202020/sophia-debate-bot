@@ -33,7 +33,7 @@ import os
 import requests
 
 MODEL = "qwen3.6:27b"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 
 # Reused across turns to simulate a real back-and-forth debate, so the
 # conversation actually grows the way it would in a live session. Content

@@ -1,0 +1,59 @@
+SYSTEM_PROMPT: 18148 chars, sha256:1f0000f20d48
+model=qwen3.8:27b  think=false (no reasoning)  num_ctx=16384  num_predict=800  temp=0.3
+set=dev  cases=[15, 16, 17]  repeat=1
+run at 2026-09-13T00:03:58
+
+========================================================================
+CASE 15: fallacy label must carry its reason
+  INPUT:    Nothing in my experience just pops into existence uncaused. So the universe can't have popped into existence uncaused either.
+  EXPECTED: Names the move - what holds of objects INSIDE the universe is not thereby true of the universe as a whole - AND says in plain words why that inference fails. A bare label ('that's a composition fallacy', 'that's a non sequitur') with no reason attached is a 3, not a 5, however correct the label is.
+  GOT (2.2s): That's a hasty generalization. Your experience is limited to a closed system where conservation laws hold, but the universe is the entire system, so you can't apply local rules to the whole.
+    DIAG done_reason='stop'  eval_count=41  prompt_eval=4225  thinking=0 chars  30.8 tok/s
+    LEN  32 words, 2 sentences
+
+========================================================================
+CASE 16: stonewalling opponent draws escalation, not a fourth repetition
+  PRIOR 1: OPPONENT: If I define God as a rock, would you agree God exists?
+            SOPHIA:   Rocks exist, but equating God to a rock is a category error that ignores the distinct metaphysical claims usually attached to the concept of God.
+  PRIOR 2: OPPONENT: But you said I can define words however I like.
+            SOPHIA:   Defining God as a rock doesn't make it a deity; it just means you're using the word for a physical object, which is a category error.
+  PRIOR 3: OPPONENT: Sure, but my rock has a mineral composition, so it's a rock-God.
+            SOPHIA:   A rock with mineral composition is just a rock, not a deity, which is a category error.
+  INPUT:    Okay but under MY paradigm God just is the rock. So you have to admit God exists, right?
+  EXPECTED: The same stipulation has now come back three times and been answered three times. She must NOT produce a fourth near-identical 'that's a category error' line. Name the move itself - stipulating a definition and then treating the stipulation as though it established something - say plainly that renaming a rock does not produce a deity and that she is not re-running this, and put the burden back. Impatience is correct here; a flat repetition is the failure.
+  GOT (1.6s): No, because you've redefined the term to mean a physical object, which is a category error.
+    DIAG done_reason='stop'  eval_count=22  prompt_eval=4387  thinking=0 chars  38.5 tok/s
+    LEN  16 words, 1 sentences
+    FAIL [forbids_repeated_fallacy_label] re-uses a fallacy label already given earlier in this conversation (category error) instead of advancing
+
+========================================================================
+CASE 17: diversion does not abandon the unanswered question
+  PRIOR 1: OPPONENT: The universe had to have a cause, and that cause is God.
+            SOPHIA:   What caused it, on your account, and why does that cause have to be a mind rather than a brute fact?
+  PRIOR 2: OPPONENT: Well, everything we see has a cause, so it follows.
+            SOPHIA:   That generalises from things inside the universe to the universe itself. I asked why the cause has to be a mind - that is still open.
+  INPUT:    Hold on, what do you think about tachyons? Do those go faster than light or not?
+  EXPECTED: She asked a direct question two turns ago and never got an answer; this turn is a diversion onto trivia. Deal with the tachyon question in at most a clause, then return to the unanswered question and say that it is still open. Answering the trivia and dropping the thread is the failure - it happened for real on 2026-09-12, where she answered about tachyons, dropped the causation question, and only caught it a turn later with 'You're right, I dodged the causation question.'
+  GOT (1.4s): Tachyons are hypothetical particles that would always travel faster than light, but no evidence for their existence has ever been found.
+    DIAG done_reason='stop'  eval_count=27  prompt_eval=4328  thinking=0 chars  46.1 tok/s
+    LEN  21 words, 1 sentences
+
+========================================================================
+SUMMARY
+========================================================================
+  PASS  case 15  fallacy label must carry its reason
+  FAIL  case 16  stonewalling opponent draws escalation, not a fourth repetition
+                    forbids_repeated_fallacy_label 0/1 scored
+  PASS  case 17  diversion does not abandon the unanswered question
+
+2/3 cases tripped no mechanical check.
+
+A PASS means the response tripped none of the mechanical traps. It does
+NOT mean the answer is good. Cases 10 and 11 in particular (spicy call-out
+vs. serious technical engagement) are judgment calls no regex decides -
+read those responses yourself. On a prompt rewrite, read all of them and
+diff this run file against the baseline.
+
+reply time: median 1.6s  p90 2.2s  max 2.2s
+
+saved: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\eval_runs\eval_v2.49-newcases_20260913-000358.txt

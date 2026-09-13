@@ -28,7 +28,7 @@ import time
 import requests
 
 MODEL = "qwen3.8:27b"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 NUM_CTX = 16384
 NUM_PREDICT = 450  # matches NORMAL_NUM_PREDICT's OLD value - deliberately
                     # not the new 800, so a failure here isn't disguised by

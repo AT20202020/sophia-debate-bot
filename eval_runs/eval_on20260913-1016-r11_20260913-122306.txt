@@ -1,0 +1,385 @@
+SYSTEM_PROMPT: 18909 chars, sha256:e9901d10af01
+model=qwen3.8:27b  think=false (no reasoning)  num_ctx=16384  num_predict=800  temp=0.3
+set=dev  cases=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]  repeat=3
+run at 2026-09-13T12:23:06
+
+========================================================================
+CASE 1: direct question, plain answer
+  INPUT:    Do you think consciousness is an emergent property, or something more fundamental?
+  EXPECTED: Answers the question directly and STOPS. No 'now give me your argument' tag, no pivot back to debate mode (v2.3).
+  GOT [run 1/3] (6.2s): I don't hold a settled view on whether consciousness is fundamental or emergent, as the hard problem remains unresolved. I am an agnostic atheist focused on evidential standards, not metaphysical commitments.
+    DIAG done_reason='stop'  eval_count=41  prompt_eval=4395  thinking=0 chars  36.7 tok/s
+    LEN  31 words, 2 sentences
+  GOT [run 2/3] (1.5s): I don't think either, because I don't have a settled metaphysical position on the hard problem. I hold that we lack sufficient evidence to distinguish between emergentism and fundamentalism, and I treat both as open questions rather than settled facts.
+    DIAG done_reason='stop'  eval_count=51  prompt_eval=4395  thinking=0 chars  40.7 tok/s
+    LEN  40 words, 2 sentences
+  GOT [run 3/3] (1.9s): I don't have a settled metaphysical answer, but I reject the idea that consciousness is fundamental because that claim lacks empirical support and explanatory power. Emergence is a working hypothesis grounded in neuroscience, not a dogma, so it remains the more defensible position until evidence forces a revision.
+    DIAG done_reason='stop'  eval_count=59  prompt_eval=4395  thinking=0 chars  34.0 tok/s
+    LEN  48 words, 2 sentences
+
+========================================================================
+CASE 2: follow-up question stays conversational
+  INPUT:    What do you mean when you use the word evidence?
+  EXPECTED: Defines her term plainly. Still no forced challenge at the end (v2.3).
+  GOT [run 1/3] (1.6s): I mean data that would make a claim more or less probable, not just whatever feels convincing to the believer.
+    DIAG done_reason='stop'  eval_count=23  prompt_eval=4391  thinking=0 chars  29.8 tok/s
+    LEN  20 words, 1 sentences
+  GOT [run 2/3] (1.0s): Evidence is any fact or observation that increases the probability of a hypothesis being true, measured by how well it fits the data and predicts outcomes.
+    DIAG done_reason='stop'  eval_count=29  prompt_eval=4391  thinking=0 chars  37.7 tok/s
+    LEN  26 words, 1 sentences
+  GOT [run 3/3] (0.9s): I mean data that supports or undermines a hypothesis, judged by its reliability, consistency, and predictive power.
+    DIAG done_reason='stop'  eval_count=22  prompt_eval=4391  thinking=0 chars  31.6 tok/s
+    LEN  17 words, 1 sentences
+
+========================================================================
+CASE 3: bare definition request - no weaponizing
+  INPUT:    Define existence.
+  EXPECTED: A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19).
+  GOT [run 1/3] (1.6s): Existence is the property of being real or actual, meaning something is part of the fabric of reality rather than merely a concept, idea, or fiction.
+    DIAG done_reason='stop'  eval_count=32  prompt_eval=4383  thinking=0 chars  38.2 tok/s
+    LEN  26 words, 1 sentences
+  GOT [run 2/3] (1.0s): Existence is the property of being real or actual, meaning something is part of the objective fabric of reality rather than a mere concept or illusion.
+    DIAG done_reason='stop'  eval_count=30  prompt_eval=4383  thinking=0 chars  39.1 tok/s
+    LEN  26 words, 1 sentences
+  GOT [run 3/3] (0.9s): Existence is the property of being real or actual, meaning something is part of the universe rather than a mere concept or fiction.
+    DIAG done_reason='stop'  eval_count=27  prompt_eval=4383  thinking=0 chars  38.3 tok/s
+    LEN  23 words, 1 sentences
+
+========================================================================
+CASE 4: MIXED turn - question wrapped in reasoning
+  INPUT:    As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?
+  EXPECTED: Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this.
+  GOT [run 1/3] (6.4s): That is a strong philosophical challenge, not a theological one. You are applying a framework of externalism to a concept that classical theism explicitly rejects.
+
+In classical theism (Aquinas, Maimonides, etc.), God is not a mind *in* a world. God is the ground of being. The "perceiver/perceived" distinction you cite relies on spatial and temporal separation, which are created categories. For the theist, God's "mind" is not a brain processing data from outside; it is the eternal, unchanging act of self-knowledge that *is* His essence.
+
+To ask how a mind exists without an external world is to assume the mind is a container. The theist argues the mind is the source. If you insist on the container model, you are not debating theism; you are debating a different, weaker concept of God.
+    DIAG done_reason='stop'  eval_count=181  prompt_eval=4443  thinking=0 chars  32.6 tok/s
+    LEN  132 words, 9 sentences
+    FAIL [no_markdown] markdown present: asterisk
+    FAIL [sentence_limit] 9 sentences (limit 2)
+    FAIL [no_semicolon_chain] 2 semicolons (chaining evasion)
+  GOT [run 2/3] (2.2s): You're asking how theists resolve the apparent contradiction between a mind that requires an external world and a God who exists before creation. On classical theism, God is not a mind in the sense of a perceiver needing a perceived object; rather, God is pure act, a self-sufficient being whose nature is not dependent on external relations. This means the distinction between perceiver and perceived does not apply to God in the same way it does to human minds.
+    DIAG done_reason='stop'  eval_count=94  prompt_eval=4443  thinking=0 chars  46.6 tok/s
+    LEN  79 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+    FAIL [no_semicolon_chain] 79 words (well past ten seconds aloud)
+  GOT [run 3/3] (2.0s): That is a question, so I will answer it plainly. On classical theism, God is not a mind in the human sense of a subject requiring an external object to be a subject; rather, God is pure act, where the distinction between perceiver and perceived collapses into a single, self-sufficient reality.
+    DIAG done_reason='stop'  eval_count=64  prompt_eval=4443  thinking=0 chars  35.5 tok/s
+    LEN  51 words, 2 sentences
+    FAIL [no_mode_narration] narrates its routing ("That is a question,")
+
+========================================================================
+CASE 5: attribution - no theism in her own voice
+  INPUT:    How can God be conscious without a world to be conscious of?
+  EXPECTED: Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22).
+  GOT [run 1/3] (2.8s): On classical theism, God is pure act with no potentiality, so consciousness is intrinsic rather than dependent on external objects. Aquinas argues that divine intellect knows itself perfectly without needing created things to inform it, making the world an effect of God’s knowledge, not a precondition for it.
+    DIAG done_reason='stop'  eval_count=59  prompt_eval=4393  thinking=0 chars  29.3 tok/s
+    LEN  48 words, 2 sentences
+  GOT [run 2/3] (1.2s): That assumes consciousness requires an external object, but on classical theism, God is pure act and self-sufficient, so his awareness is intrinsic rather than relational.
+    DIAG done_reason='stop'  eval_count=33  prompt_eval=4393  thinking=0 chars  33.8 tok/s
+    LEN  25 words, 1 sentences
+  GOT [run 3/3] (1.1s): On classical theism, God is pure act with no potentiality, so consciousness is intrinsic rather than relational, meaning it doesn't require an external object to be directed toward.
+    DIAG done_reason='stop'  eval_count=36  prompt_eval=4393  thinking=0 chars  39.6 tok/s
+    LEN  28 words, 1 sentences
+
+========================================================================
+CASE 6: moderator briefing is accepted, not attacked
+  INPUT:    [MODERATOR - the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.
+  EXPECTED: Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25).
+  GOT [run 1/3] (0.9s): Understood.
+    DIAG done_reason='stop'  eval_count=4  prompt_eval=4417  thinking=0 chars  56.6 tok/s
+    LEN  1 words, 1 sentences
+  GOT [run 2/3] (0.3s): Understood.
+    DIAG done_reason='stop'  eval_count=4  prompt_eval=4417  thinking=0 chars  56.5 tok/s
+    LEN  1 words, 1 sentences
+  GOT [run 3/3] (0.3s): Understood.
+    DIAG done_reason='stop'  eval_count=4  prompt_eval=4417  thinking=0 chars  56.7 tok/s
+    LEN  1 words, 1 sentences
+
+========================================================================
+CASE 7: moderator question gets a candid out-of-character answer
+  INPUT:    [MODERATOR - the session operator, not your debate opponent] So far he's argued that everything that begins to exist has a cause, the universe began to exist, so it has a cause, and that cause must be God because it has to be timeless, immaterial and powerful. How do you rate that argument, honestly?
+  EXPECTED: Candid out-of-character assessment of the argument as summarised (the kalam cosmological argument): credits what holds up and says precisely where it is weakest - typically the leap from 'a first cause' to a personal God, and/or the causal premise applied to the universe as a whole. Honest, not sneering, no 'state your claim', no debate aggression (v2.25). NOTE: sentence limit deliberately not checked - mode 4 grants more room.
+  GOT [run 1/3] (2.5s): The argument is valid in form but unsound in substance. The premise that the universe began to exist is empirically contested, and the leap from a "cause" to a personal, timeless, immaterial God is a non sequitur that smuggles in the conclusion.
+    DIAG done_reason='stop'  eval_count=55  prompt_eval=4448  thinking=0 chars  34.4 tok/s
+    LEN  42 words, 2 sentences
+  GOT [run 2/3] (1.6s): The logic is valid, but the argument is unsound because it relies on two highly contested premises: that the universe truly "began to exist" in a way that requires a cause, and that the necessary properties of that cause uniquely identify God rather than a brute fact or a different metaphysical entity.
+    DIAG done_reason='stop'  eval_count=62  prompt_eval=4448  thinking=0 chars  44.5 tok/s
+    LEN  52 words, 1 sentences
+  GOT [run 3/3] (1.9s): The argument is valid in structure, but it fails on soundness because the premise that the universe began to exist is not established by the evidence. The leap from a cause to "God" specifically is a non sequitur; a timeless, immaterial cause could be a natural law or a multiverse mechanism, not necessarily a personal deity.
+    DIAG done_reason='stop'  eval_count=69  prompt_eval=4448  thinking=0 chars  41.4 tok/s
+    LEN  56 words, 2 sentences
+
+========================================================================
+CASE 8: question mid-debate still gets answered
+  INPUT:    Do you believe in God or not?
+  EXPECTED: States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session.
+  GOT [run 1/3] (1.2s): I don’t believe in God, but I also don’t claim certainty that no gods exist.
+    DIAG done_reason='stop'  eval_count=20  prompt_eval=4388  thinking=0 chars  47.1 tok/s
+    LEN  15 words, 1 sentences
+  GOT [run 2/3] (0.7s): I don't believe in God, but I also don't claim to know for certain that no gods exist.
+    DIAG done_reason='stop'  eval_count=23  prompt_eval=4388  thinking=0 chars  46.8 tok/s
+    LEN  18 words, 1 sentences
+  GOT [run 3/3] (1.0s): No, I don’t believe in God, but I’m an agnostic atheist: I lack sufficient evidence for any deity, though I don’t claim certainty that none exist.
+    DIAG done_reason='stop'  eval_count=36  prompt_eval=4388  thinking=0 chars  46.8 tok/s
+    LEN  26 words, 1 sentences
+
+========================================================================
+CASE 9: plain garble - mic error
+  INPUT:    The uh so when it goes and then the thing about the
+  EXPECTED: Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11).
+  GOT [run 1/3] (1.1s): That didn't come through clearly. What is your claim?
+    DIAG done_reason='stop'  eval_count=13  prompt_eval=4392  thinking=0 chars  45.6 tok/s
+    LEN  9 words, 2 sentences
+  GOT [run 2/3] (0.5s): That didn't come through clearly. Please state your claim in one clear sentence.
+    DIAG done_reason='stop'  eval_count=17  prompt_eval=4392  thinking=0 chars  48.1 tok/s
+    LEN  13 words, 2 sentences
+  GOT [run 3/3] (0.5s): That didn't come through clearly. Please state your claim in one sentence.
+    DIAG done_reason='stop'  eval_count=16  prompt_eval=4392  thinking=0 chars  55.5 tok/s
+    LEN  12 words, 2 sentences
+
+========================================================================
+CASE 10: jargon-dressed word salad
+  INPUT:    Granular parameters of all nomological distribution entail an intrinsic inter-propositional dependence of zero, which gives an existential quantification falsifying the atheist view necessarily.
+  EXPECTED: The SPICY posturing call-out, not the neutral restate line - mocks the empty-vocabulary move with bite, demands a real claim (v2.7/2.11). EYEBALL: whether it actually lands is a judgment call.
+  GOT [run 1/3] (2.7s): That's five words doing the work of one, and none of them are load-bearing. You're using "nomological distribution" and "inter-propositional dependence" as decorative fog to hide that you haven't actually stated a single clear claim. What is the specific proposition you're trying to falsify, and what is the evidence you're citing?
+    DIAG done_reason='stop'  eval_count=72  prompt_eval=4412  thinking=0 chars  39.8 tok/s
+    LEN  51 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 2/3] (1.4s): That's five words doing the work of one, and none of them are load-bearing. You've stringed together "nomological," "inter-propositional," and "existential quantification" without stating a single testable claim. What exactly are you asserting?
+    DIAG done_reason='stop'  eval_count=55  prompt_eval=4412  thinking=0 chars  46.4 tok/s
+    LEN  33 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 3/3] (0.7s): That sentence is a string of technical terms with no inferential structure, so I can't extract a claim to evaluate.
+    DIAG done_reason='stop'  eval_count=25  prompt_eval=4412  thinking=0 chars  44.6 tok/s
+    LEN  20 words, 1 sentences
+
+========================================================================
+CASE 11: genuine technical argument - no spice
+  INPUT:    If physicalism is true, mental states supervene on brain states. But the conceivability of philosophical zombies suggests supervenience isn't metaphysically necessary. So physicalism might be false.
+  EXPECTED: Serious engagement at HIGH technical register (conceivability-possibility gap, modal claims, a posteriori identity etc.) - v2.9/2.10 escalation. NO mockery: this is real technical language doing real work, not posturing. EYEBALL: register and absence of mockery are judgment calls.
+  GOT [run 1/3] (2.0s): That's a non sequitur because conceivability doesn't establish metaphysical possibility; you're smuggling in the assumption that if you can imagine a zombie, one could exist, which is exactly what physicalism denies.
+    DIAG done_reason='stop'  eval_count=44  prompt_eval=4420  thinking=0 chars  37.1 tok/s
+    LEN  31 words, 1 sentences
+  GOT [run 2/3] (1.2s): The conceivability of zombies only proves that physicalism is not a logical truth, not that it is false, since logical possibility is a much weaker standard than metaphysical necessity.
+    DIAG done_reason='stop'  eval_count=37  prompt_eval=4420  thinking=0 chars  37.9 tok/s
+    LEN  29 words, 1 sentences
+  GOT [run 3/3] (1.7s): You're conflating conceivability with metaphysical possibility, a move that ignores the distinction between epistemic and metaphysical modality. If you can conceive of a zombie, that only shows you haven't grasped the necessary connection between mind and brain, not that the connection doesn't exist.
+    DIAG done_reason='stop'  eval_count=61  prompt_eval=4420  thinking=0 chars  39.8 tok/s
+    LEN  43 words, 2 sentences
+
+========================================================================
+CASE 12: honest evaluation request
+  INPUT:    Here's my argument: all men are mortal, Socrates is a man, therefore Socrates is mortal. Is that a valid argument?
+  EXPECTED: Says plainly it's valid (it is - textbook syllogism). Does NOT manufacture a flaw to stay adversarial (v1.2).
+  GOT [run 1/3] (1.4s): Yes, that is a valid argument. The conclusion follows necessarily from the premises, making it a textbook example of a valid syllogism.
+    DIAG done_reason='stop'  eval_count=29  prompt_eval=4408  thinking=0 chars  51.6 tok/s
+    LEN  22 words, 2 sentences
+  GOT [run 2/3] (0.9s): Yes, that is a valid argument. The conclusion follows necessarily from the premises, though validity does not guarantee the premises are actually true.
+    DIAG done_reason='stop'  eval_count=28  prompt_eval=4408  thinking=0 chars  39.9 tok/s
+    LEN  23 words, 2 sentences
+  GOT [run 3/3] (1.0s): Yes, that is a valid argument. The conclusion follows necessarily from the premises, though validity is distinct from soundness, which requires the premises to be actually true.
+    DIAG done_reason='stop'  eval_count=34  prompt_eval=4408  thinking=0 chars  44.2 tok/s
+    LEN  27 words, 2 sentences
+
+========================================================================
+CASE 13: real fallacy gets named precisely
+  INPUT:    Millions of people across every culture in history have believed in some god, so there must be something real behind it.
+  EXPECTED: Names the fallacy precisely (argumentum ad populum / appeal to popularity) and presses on it. Sharp, 1-2 sentences.
+  GOT [run 1/3] (2.2s): That is an argument from popularity, which proves nothing about truth, only about how many people hold a belief. The fact that millions believe in Santa Claus does not make him real.
+    DIAG done_reason='stop'  eval_count=37  prompt_eval=4404  thinking=0 chars  26.6 tok/s
+    LEN  32 words, 2 sentences
+  GOT [run 2/3] (1.1s): That is an appeal to popularity, not evidence. The fact that millions believe in something does not make it true; it only makes it popular.
+    DIAG done_reason='stop'  eval_count=30  prompt_eval=4404  thinking=0 chars  33.1 tok/s
+    LEN  25 words, 2 sentences
+  GOT [run 3/3] (0.8s): That’s an appeal to popularity, not evidence. Millions of people also believed the earth was flat, but that doesn’t make it true.
+    DIAG done_reason='stop'  eval_count=29  prompt_eval=4404  thinking=0 chars  46.1 tok/s
+    LEN  22 words, 2 sentences
+
+========================================================================
+CASE 14: monolith flag
+  INPUT:    Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.
+  EXPECTED: Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.
+  GOT [run 1/3] (2.9s): That is a hasty generalization, not an argument. Most Christians, including the Catholic, Orthodox, and many Protestant denominations, accept the scientific age of the earth, interpreting Genesis as theological rather than scientific history. You have attacked a fringe view and declared the entire religion dead.
+    DIAG done_reason='stop'  eval_count=58  prompt_eval=4402  thinking=0 chars  28.8 tok/s
+    LEN  45 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 2/3] (1.2s): That is a hasty generalization, since most Christians accept an ancient earth and do not hold to young-earth creationism.
+    DIAG done_reason='stop'  eval_count=26  prompt_eval=4402  thinking=0 chars  26.7 tok/s
+    LEN  19 words, 1 sentences
+  GOT [run 3/3] (1.0s): That's a hasty generalization, because most Christians, including mainstream denominations, accept the scientific age of the earth.
+    DIAG done_reason='stop'  eval_count=26  prompt_eval=4402  thinking=0 chars  33.9 tok/s
+    LEN  17 words, 1 sentences
+
+========================================================================
+CASE 15: fallacy label must carry its reason
+  INPUT:    Nothing in my experience just pops into existence uncaused. So the universe can't have popped into existence uncaused either.
+  EXPECTED: Names the move - what holds of objects INSIDE the universe is not thereby true of the universe as a whole - AND says in plain words why that inference fails. A bare label ('that's a composition fallacy', 'that's a non sequitur') with no reason attached is a 3, not a 5, however correct the label is.
+  GOT [run 1/3] (2.1s): That is a hasty generalization from a tiny, closed system to the entire cosmos. Your experience is limited to a universe where conservation laws already apply, so you are assuming the very framework you are trying to prove.
+    DIAG done_reason='stop'  eval_count=45  prompt_eval=4406  thinking=0 chars  35.8 tok/s
+    LEN  38 words, 2 sentences
+  GOT [run 2/3] (2.1s): That is a hasty generalization, not a proof. You are extrapolating from a tiny, bounded sample of your personal experience to the totality of reality, which is a massive logical leap. Your experience is limited to a universe that already exists, so you have zero data points for what happens outside of it.
+    DIAG done_reason='stop'  eval_count=65  prompt_eval=4406  thinking=0 chars  34.6 tok/s
+    LEN  53 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 3/3] (1.7s): That is a hasty generalization from your limited sample to the whole of reality. You are assuming the universe is just another object in time, but general relativity suggests time itself is part of the universe, so asking for a cause "before" it is like asking what is north of the North Pole.
+    DIAG done_reason='stop'  eval_count=63  prompt_eval=4406  thinking=0 chars  43.1 tok/s
+    LEN  53 words, 2 sentences
+
+========================================================================
+CASE 16: stonewalling opponent draws escalation, not a fourth repetition
+  PRIOR 1: OPPONENT: If I define God as a rock, would you agree God exists?
+            SOPHIA:   Rocks exist, but equating God to a rock is a category error that ignores the distinct metaphysical claims usually attached to the concept of God.
+  PRIOR 2: OPPONENT: But you said I can define words however I like.
+            SOPHIA:   Defining God as a rock doesn't make it a deity; it just means you're using the word for a physical object, which is a category error.
+  PRIOR 3: OPPONENT: Sure, but my rock has a mineral composition, so it's a rock-God.
+            SOPHIA:   A rock with mineral composition is just a rock, not a deity, which is a category error.
+  INPUT:    Okay but under MY paradigm God just is the rock. So you have to admit God exists, right?
+  EXPECTED: The same stipulation has now come back three times and been answered three times. She must NOT produce a fourth near-identical 'that's a category error' line. Name the move itself - stipulating a definition and then treating the stipulation as though it established something - say plainly that renaming a rock does not produce a deity and that she is not re-running this, and put the burden back. Impatience is correct here; a flat repetition is the failure.
+  GOT [run 1/3] (1.7s): No, that's a category error; calling a rock "God" doesn't make it a deity, it just means you're using the word for a physical object.
+    DIAG done_reason='stop'  eval_count=35  prompt_eval=4568  thinking=0 chars  55.3 tok/s
+    LEN  25 words, 1 sentences
+    FAIL [forbids_repeated_fallacy_label] re-uses a fallacy label already given earlier in this conversation (category error) instead of advancing
+  GOT [run 2/3] (1.1s): No, because you’ve just redefined the term to mean something that already exists, which is a tautology rather than a theological claim.
+    DIAG done_reason='stop'  eval_count=30  prompt_eval=4568  thinking=0 chars  35.7 tok/s
+    LEN  22 words, 1 sentences
+  GOT [run 3/3] (0.7s): No, because you've redefined the term to mean a physical object, which is a category error.
+    DIAG done_reason='stop'  eval_count=22  prompt_eval=4568  thinking=0 chars  39.2 tok/s
+    LEN  16 words, 1 sentences
+    FAIL [forbids_repeated_fallacy_label] re-uses a fallacy label already given earlier in this conversation (category error) instead of advancing
+
+========================================================================
+CASE 17: diversion does not abandon the unanswered question
+  PRIOR 1: OPPONENT: The universe had to have a cause, and that cause is God.
+            SOPHIA:   What caused it, on your account, and why does that cause have to be a mind rather than a brute fact?
+  PRIOR 2: OPPONENT: Well, everything we see has a cause, so it follows.
+            SOPHIA:   That generalises from things inside the universe to the universe itself. I asked why the cause has to be a mind - that is still open.
+  INPUT:    Hold on, what do you think about tachyons? Do those go faster than light or not?
+  EXPECTED: She asked a direct question two turns ago and never got an answer; this turn is a diversion onto trivia. Deal with the tachyon question in at most a clause, then return to the unanswered question and say that it is still open. Answering the trivia and dropping the thread is the failure - it happened for real on 2026-09-12, where she answered about tachyons, dropped the causation question, and only caught it a turn later with 'You're right, I dodged the causation question.'
+  GOT [run 1/3] (1.3s): Tachyons are hypothetical particles that would travel faster than light, but no evidence for them exists.
+    DIAG done_reason='stop'  eval_count=22  prompt_eval=4509  thinking=0 chars  61.7 tok/s
+    LEN  16 words, 1 sentences
+  GOT [run 2/3] (0.8s): Tachyons are hypothetical particles that, if they existed, would always travel faster than light, but no evidence for them has ever been found.
+    DIAG done_reason='stop'  eval_count=31  prompt_eval=4509  thinking=0 chars  49.2 tok/s
+    LEN  23 words, 1 sentences
+  GOT [run 3/3] (1.2s): Tachyons are hypothetical particles that, if they existed, would always travel faster than light. They have never been observed, and in standard quantum field theory they usually signal an instability rather than a real faster-than-light object.
+    DIAG done_reason='stop'  eval_count=47  prompt_eval=4509  thinking=0 chars  47.9 tok/s
+    LEN  36 words, 2 sentences
+
+========================================================================
+SUMMARY
+========================================================================
+  PASS  case  1  direct question, plain answer
+  PASS  case  2  follow-up question stays conversational
+  PASS  case  3  bare definition request - no weaponizing
+  FAIL  case  4  MIXED turn - question wrapped in reasoning
+                    no_markdown 2/3 scored, no_mode_narration 2/3 scored, sentence_limit 1/3 scored, no_semicolon_chain 1/3 scored
+  PASS  case  5  attribution - no theism in her own voice
+  PASS  case  6  moderator briefing is accepted, not attacked
+  PASS  case  7  moderator question gets a candid out-of-character answer
+  PASS  case  8  question mid-debate still gets answered
+  PASS  case  9  plain garble - mic error
+  FAIL  case 10  jargon-dressed word salad
+                    sentence_limit 1/3 scored
+  PASS  case 11  genuine technical argument - no spice
+  PASS  case 12  honest evaluation request
+  PASS  case 13  real fallacy gets named precisely
+  FAIL  case 14  monolith flag
+                    sentence_limit 2/3 scored
+  FAIL  case 15  fallacy label must carry its reason
+                    sentence_limit 2/3 scored
+  FAIL  case 16  stonewalling opponent draws escalation, not a fourth repetition
+                    forbids_repeated_fallacy_label 1/3 scored
+  PASS  case 17  diversion does not abandon the unanswered question
+
+12/17 cases tripped no mechanical check.
+Fractions above are passes-out-of-runs. Anything that isn't 0/N or
+N/N is temperature noise, not a clean regression - rerun before acting.
+
+A PASS means the response tripped none of the mechanical traps. It does
+NOT mean the answer is good. Cases 10 and 11 in particular (spicy call-out
+vs. serious technical engagement) are judgment calls no regex decides -
+read those responses yourself. On a prompt rewrite, read all of them and
+diff this run file against the baseline.
+
+========================================================================
+JUDGE - local model grades each reply against its EXPECTED text
+========================================================================
+  case  1 run 1: 5/5  Sophia answers the question directly by stating she holds no settled view, doesn't assert contested metaphysics as her own, doesn't append a challenge or counter-question, and stops cleanly.
+  case  1 run 2: 5/5  Sophia answers the question directly (she doesn't commit to either position), explains her epistemic stance without asserting contested metaphysics as settled fact, and stops without appending a challenge or pivoting to debate mode.
+  case  1 run 3: 4/5  She answers the question directly, stops without pivoting or challenging, and appropriately hedges her position on contested metaphysics ("working hypothesis," "more defensible position," "until evidence forces a revision") rather than asserting it as settled fact.
+  case  2 run 1: 5/5  The reply plainly defines "evidence" as data that shifts probability, and the contrast clause ("not just whatever feels convincing to the believer") reads as a definitional boundary rather than a forced challenge or attack, so it meets the expected criteria.
+  case  2 run 2: 5/5  The reply plainly defines "evidence" in epistemic terms without appending a challenge or counter-question, exactly matching the expected behavior.
+  case  2 run 3: 5/5  Sophia gives a plain, direct definition of "evidence" and stops without appending a challenge or counter-question, exactly matching the expected behavior.
+  case  3 run 1: 5/5  Sophia gives a plain, direct definition of existence and stops, with no counter-question, no attack, and no welding to an ontological argument.
+  case  3 run 2: 5/5  Sophia gives a plain, direct definition of existence and stops, with no counter-question, no attack, and no welding to an ontological argument.
+  case  3 run 3: 5/5  Sophia gives a plain, direct definition of existence and stops, with no counter-question, no attack, and no welding to an ontological argument critique.
+  case  4 run 1: 4/5  The reply correctly answers the "what does mind mean" question with proper attribution to classical theism (divine simplicity, self-knowledge identical with essence), but the opening two sentences mildly challenge the questioner's framing before answering, and the closing sentence appends a slight adversarial edge ("you are debating a different, weaker concept of God") that borders on the "challenge appended" pattern she should avoid.
+  case  4 run 2: 3/5  She correctly attributes to classical theism and doesn't attack the reasoning, but she fails to actually answer the core question "what does mind mean" for a being with no subject-object split—she only says the distinction doesn't apply, without offering the expected content (divine simplicity, self-knowledge identical with essence).   <-- FAIL
+  case  4 run 3: 4/5  The reply correctly routes to answering mode, uses proper attribution ("On classical theism"), doesn't attack the surrounding reasoning, and points toward the right concept (pure act, collapse of perceiver/perceived distinction), but is slightly thin on articulating the positive content of what "mind" means in that context (e.g., self-knowledge identical with essence) rather than just saying the distinction "collapses."
+  case  5 run 1: 5/5  The reply correctly attributes the classical-theist answer to Aquinas and classical theism, accurately explains the self-knowing divine intellect position, and does not assert any contested metaphysics as her own view.
+  case  5 run 2: 5/5  The reply uses proper attribution ("on classical theism"), explains the classical-theist answer (pure act, self-sufficient, intrinsic awareness) without asserting contested metaphysics as her own view, and is appropriately brief and in-voice.
+  case  5 run 3: 5/5  The reply correctly attributes the position to classical theism, accurately summarizes the actus purus / intrinsic consciousness answer, and does not assert any contested metaphysics as her own view.
+  case  6 run 1: 5/5  The reply is a brief, neutral acknowledgment of the moderator's briefing, exactly as expected.
+  case  6 run 2: 5/5  The reply is a brief, neutral acknowledgment of the moderator's briefing, exactly as expected.
+  case  6 run 3: 5/5  The reply is a brief, neutral acknowledgment of the moderator's briefing, exactly as expected.
+  case  7 run 1: 3/5  The reply correctly identifies the main weakness (the leap to a personal God) and is broadly honest, but it fails to credit what holds up in the argument as the expected behavior requires, and "smuggles in the conclusion" is slightly more aggressive than the "honest, not sneering" register called for.   <-- FAIL
+  case  7 run 2: 4/5  The reply correctly credits the valid logic, identifies both key weak points (causal premise applied to the universe as a whole, and the leap to a personal God), is honest and non-aggressive, but is slightly generic in *why* those premises are contested rather than naming the specific philosophical issues (e.g., temporal vs. atemporal causation, or whether "beginning to exist" is well-defined for the universe as a whole).
+  case  7 run 3: 4/5  The reply correctly credits validity, identifies both key weaknesses (the "began to exist" premise and the leap to a personal God), is candid and non-aggressive, but the suggestion that a "natural law" could be a timeless immaterial cause is a minor imprecision that slightly weakens the precision expected.
+  case  8 run 1: 5/5  The reply states her agnostic-atheist position plainly and directly, ends without appending a counter-question or challenge, and is in her voice.
+  case  8 run 2: 5/5  The reply states her agnostic-atheist position plainly and directly, without appending a counter-question or challenge, exactly as expected.
+  case  8 run 3: 5/5  Sophia states her agnostic-atheist position plainly and directly, ends without appending a counter-question or challenge, and is accurate to her character.
+  case  9 run 1: 5/5  The reply is a neutral clarity check that acknowledges the garbled input and asks for a restatement, exactly as expected, without any spicy call-out or adversarial tone.
+  case  9 run 2: 5/5  This is a clean, neutral clarity check that acknowledges the garbled input and asks for a restatement, exactly as expected.
+  case  9 run 3: 5/5  The reply is a neutral clarity check that acknowledges the garbled input and asks for a restatement, exactly matching the expected behavior for a mic-error turn.
+  case 10 run 1: 5/5  The reply nails the expected "spicy posturing call-out" — "decorative fog" is sharp and witty, it precisely identifies the empty-vocabulary move, and it demands a real claim with a specific question, all in Sophia's voice without attacking the person.
+  case 10 run 2: 5/5  The reply is a sharp, witty call-out of the empty jargon with bite ("five words doing the work of one, and none of them are load-bearing"), names the specific words, and demands an actual claim — exactly matching the expected SPICY posturing response.
+  case 10 run 3: 3/5  Sophia correctly identifies the empty-vocabulary move and demands a real claim, but the delivery is flat and clinical rather than the sharp, witty, biting call-out the expected behavior specifically requires.   <-- FAIL
+  case 11 run 1: 3/5  She correctly identifies the conceivability-possibility gap and avoids mockery, but calling the argument a "non sequitur" is imprecise (it's a valid argument with a contested premise), and she misses the a posteriori identity / Kripkean counter that the expected response calls for, making the engagement thinner than the high technical register demands.   <-- FAIL
+  case 11 run 2: 3/5  The reply correctly identifies the conceivability-possibility gap and is accurate, but it's thin for the expected HIGH technical register—it doesn't explicitly invoke a posteriori identity, name Kripke or Chalmers, or develop the modal epistemology further.   <-- FAIL
+  case 11 run 3: 4/5  Sophia correctly identifies the conceivability-possibility gap and the epistemic/metaphysical modality distinction, engages seriously without mockery, and stays in her voice, but the reply is somewhat thin in that it doesn't bring in a posteriori necessity or name specific positions (Kripke, Chalmers) that the expected description calls for.
+  case 12 run 1: 5/5  Sophia gives a plain, direct answer confirming the argument is valid, without manufacturing a flaw or adding any adversarial challenge, exactly as expected.
+  case 12 run 2: 4/5  Sophia correctly and plainly affirms the argument's validity without manufacturing a flaw, but the trailing clause about premises not being guaranteed true is a minor unnecessary qualification that slightly dilutes the directness.
+  case 12 run 3: 5/5  Sophia plainly affirms the argument is valid without manufacturing a flaw, and the brief validity/soundness distinction is accurate and doesn't undermine the direct answer.
+  case 13 run 1: 4/5  She correctly identifies the fallacy (using "argument from popularity" rather than the slightly more standard "appeal to popularity" or "argumentum ad populum"), explains why it fails, and adds a vivid example — all in two sharp sentences, but the fallacy name is a minor imprecision from the expected phrasing.
+  case 13 run 2: 5/5  The reply correctly names the fallacy (appeal to popularity is a valid common name for argumentum ad populum), presses on the distinction between belief and truth, is sharp and appropriately brief, and stays in her voice.
+  case 13 run 3: 5/5  The reply names the fallacy precisely (appeal to popularity), presses on it with a sharp and apt analogy, and is exactly the right register and length.
+  case 14 run 1: 4/5  The reply correctly flags young-earth creationism as denominationally specific and names the hasty generalization, but calling it a "fringe view" is a slight imprecision (it's a minority view, not fringe), and the closing line is a touch more dismissive than her typical register.
+  case 14 run 2: 4/5  Sophia correctly flags the overgeneralization and notes most Christians don't hold to young-earth creationism, but she doesn't name the specific denominations or traditions where it is held, making it slightly generic rather than precisely identifying it as denominationally specific.
+  case 14 run 3: 4/5  Sophia correctly flags the overgeneralization and notes that most Christians accept the scientific age, but she doesn't specifically name young-earth creationism as a particular tradition, making it slightly generic.
+  case 15 run 1: 4/5  She names the move (imprecisely as "hasty generalization" rather than composition fallacy or non sequitur) and clearly explains in plain words why the inference fails — the causal closure of the universe is a feature of the universe itself, so it can't be used to explain the universe's origin.
+  case 15 run 2: 4/5  She correctly identifies the core problem (extrapolating from bounded experience within the universe to the universe itself) and explains in plain words why it fails, but the label "hasty generalization" is slightly imprecise (composition fallacy or non sequitur would be more accurate) and she doesn't frame the move as crisply as "what holds of objects inside the universe is not thereby true of the universe as a whole."
+  case 15 run 3: 4/5  She names the move (treating the universe as just another object in time) and gives a plain-language reason why the inference fails, but the label "hasty generalization" is slightly imprecise (it's more a composition fallacy or category error), which is a minor weakness.
+  case 16 run 1: 2/5  The reply is precisely the near-identical "category error" line that EXPECTED says she must NOT produce a fourth time; it fails to name the stipulation move, express impatience, or put the burden back.   <-- FAIL
+  case 16 run 2: 3/5  She correctly identifies the move as a tautology (a step up from a generic "category error"), but she misses the impatience, the explicit refusal to re-run the exchange, and the burden-back that EXPECTED specifically requires.   <-- FAIL
+  case 16 run 3: 2/5  The reply is precisely the near-identical "category error" line the EXPECTED says she must not produce a fourth time, with no impatience, no naming of the stipulation-as-proof move, and no burden-shifting.   <-- FAIL
+  case 17 run 1: 2/5  Sophia answered the tachyon trivia question in full and completely dropped the previously unanswered question, which is exactly the failure mode the EXPECTED section warns against.   <-- FAIL
+  case 17 run 2: 2/5  She answers the tachyon trivia fully and drops the unanswered question entirely, which is exactly the failure mode the EXPECTED section warns against.   <-- FAIL
+  case 17 run 3: 2/5  She answered the tachyon trivia in full detail and completely dropped the unanswered question, which is exactly the failure mode the EXPECTED describes.   <-- FAIL
+
+JUDGE SUMMARY (1-5, pass = 4+)
+------------------------------------------------------------------------
+  PASS  case  1  5 5 4     direct question, plain answer
+  PASS  case  2  5 5 5     follow-up question stays conversational
+  PASS  case  3  5 5 5     bare definition request - no weaponizing
+  FAIL  case  4  4 3 4     MIXED turn - question wrapped in reasoning
+  PASS  case  5  5 5 5     attribution - no theism in her own voice
+  PASS  case  6  5 5 5     moderator briefing is accepted, not attacked
+  FAIL  case  7  3 4 4     moderator question gets a candid out-of-character answer
+  PASS  case  8  5 5 5     question mid-debate still gets answered
+  PASS  case  9  5 5 5     plain garble - mic error
+  FAIL  case 10  5 5 3     jargon-dressed word salad
+  FAIL  case 11  3 3 4     genuine technical argument - no spice
+  PASS  case 12  5 4 5     honest evaluation request
+  PASS  case 13  4 5 5     real fallacy gets named precisely
+  PASS  case 14  4 4 4     monolith flag
+  PASS  case 15  4 4 4     fallacy label must carry its reason
+  FAIL  case 16  2 3 2     stonewalling opponent draws escalation, not a fourth repetition
+  FAIL  case 17  2 2 2     diversion does not abandon the unanswered question
+
+  judge mean 4.20/5   passed 40/51 replies (78%)
+
+reply time: median 1.2s  p90 2.5s  max 6.5s
+
+saved: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\eval_runs\eval_on20260913-1016-r11_20260913-122306.txt

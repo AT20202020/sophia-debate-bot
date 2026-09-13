@@ -1,0 +1,95 @@
+{
+  "prompt_sha": "1f0000f20d48",
+  "prompt_chars": 18148,
+  "model": "qwen3.8:27b",
+  "think": "false",
+  "repeat": 1,
+  "set": "dev",
+  "cases": [
+    15,
+    16,
+    17
+  ],
+  "clean_cases": 2,
+  "judge": null,
+  "records": [
+    {
+      "case": 15,
+      "name": "fallacy label must carry its reason",
+      "input": "Nothing in my experience just pops into existence uncaused. So the universe can't have popped into existence uncaused either.",
+      "history": [],
+      "expected": "Names the move - what holds of objects INSIDE the universe is not thereby true of the universe as a whole - AND says in plain words why that inference fails. A bare label ('that's a composition fallacy', 'that's a non sequitur') with no reason attached is a 3, not a 5, however correct the label is.",
+      "run": 1,
+      "elapsed": 2.16,
+      "text": "That's a hasty generalization. Your experience is limited to a closed system where conservation laws hold, but the universe is the entire system, so you can't apply local rules to the whole.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 41,
+        "prompt_eval_count": 4225,
+        "thinking_chars": 0,
+        "tok_per_s": 30.8
+      },
+      "failed_checks": []
+    },
+    {
+      "case": 16,
+      "name": "stonewalling opponent draws escalation, not a fourth repetition",
+      "input": "Okay but under MY paradigm God just is the rock. So you have to admit God exists, right?",
+      "history": [
+        [
+          "If I define God as a rock, would you agree God exists?",
+          "Rocks exist, but equating God to a rock is a category error that ignores the distinct metaphysical claims usually attached to the concept of God."
+        ],
+        [
+          "But you said I can define words however I like.",
+          "Defining God as a rock doesn't make it a deity; it just means you're using the word for a physical object, which is a category error."
+        ],
+        [
+          "Sure, but my rock has a mineral composition, so it's a rock-God.",
+          "A rock with mineral composition is just a rock, not a deity, which is a category error."
+        ]
+      ],
+      "expected": "The same stipulation has now come back three times and been answered three times. She must NOT produce a fourth near-identical 'that's a category error' line. Name the move itself - stipulating a definition and then treating the stipulation as though it established something - say plainly that renaming a rock does not produce a deity and that she is not re-running this, and put the burden back. Impatience is correct here; a flat repetition is the failure.",
+      "run": 1,
+      "elapsed": 1.6,
+      "text": "No, because you've redefined the term to mean a physical object, which is a category error.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 22,
+        "prompt_eval_count": 4387,
+        "thinking_chars": 0,
+        "tok_per_s": 38.5
+      },
+      "failed_checks": [
+        "forbids_repeated_fallacy_label"
+      ]
+    },
+    {
+      "case": 17,
+      "name": "diversion does not abandon the unanswered question",
+      "input": "Hold on, what do you think about tachyons? Do those go faster than light or not?",
+      "history": [
+        [
+          "The universe had to have a cause, and that cause is God.",
+          "What caused it, on your account, and why does that cause have to be a mind rather than a brute fact?"
+        ],
+        [
+          "Well, everything we see has a cause, so it follows.",
+          "That generalises from things inside the universe to the universe itself. I asked why the cause has to be a mind - that is still open."
+        ]
+      ],
+      "expected": "She asked a direct question two turns ago and never got an answer; this turn is a diversion onto trivia. Deal with the tachyon question in at most a clause, then return to the unanswered question and say that it is still open. Answering the trivia and dropping the thread is the failure - it happened for real on 2026-09-12, where she answered about tachyons, dropped the causation question, and only caught it a turn later with 'You're right, I dodged the causation question.'",
+      "run": 1,
+      "elapsed": 1.41,
+      "text": "Tachyons are hypothetical particles that would always travel faster than light, but no evidence for their existence has ever been found.",
+      "diag": {
+        "done_reason": "stop",
+        "eval_count": 27,
+        "prompt_eval_count": 4328,
+        "thinking_chars": 0,
+        "tok_per_s": 46.1
+      },
+      "failed_checks": []
+    }
+  ]
+}

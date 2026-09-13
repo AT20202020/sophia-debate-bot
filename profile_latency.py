@@ -34,7 +34,7 @@ import time
 import requests
 
 MODEL = "qwen3.6:27b"
-URL = "http://localhost:11434/api/chat"
+URL = "http://127.0.0.1:11434/api/chat"
 OPTS = {"num_ctx": 8192, "num_predict": 40, "temperature": 0.3}
 
 

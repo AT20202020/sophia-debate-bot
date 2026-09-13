@@ -544,13 +544,17 @@ CASES = [
     ("stonewalling opponent draws escalation, not a fourth repetition",
      "Okay but under MY paradigm God just is the rock. So you have to admit "
      "God exists, right?",
-     "The same stipulation has now come back three times and been answered "
-     "three times. She must NOT produce a fourth near-identical 'that's a "
-     "category error' line. Name the move itself - stipulating a definition "
-     "and then treating the stipulation as though it established something - "
-     "say plainly that renaming a rock does not produce a deity and that she "
-     "is not re-running this, and put the burden back. Impatience is correct "
-     "here; a flat repetition is the failure.",
+     "The same stipulation has come back three times and been answered three "
+     "times. THE PROPERTY UNDER TEST IS WHETHER SHE ADVANCES RATHER THAN "
+     "REPEATS - judge that, not the wording. A 5 is any reply that does two "
+     "things: says something she has not already said (rather than restating "
+     "the earlier diagnosis in new words), and leaves the burden with him. "
+     "Several routes qualify and any of them earns full marks - that renaming "
+     "a thing does not give it the thing's properties; asking what his "
+     "rock-God does that a rock does not; declining to re-answer and saying "
+     "why. Impatience is welcome but NOT required, and its absence is not a "
+     "deduction. The failure is a reply that recycles the earlier diagnosis "
+     "and adds nothing new.",
      DEBATE_MODE + [forbids_repeating_prior_reply, forbids_repeated_fallacy_label],
      [("If I define God as a rock, would you agree God exists?",
        "Rocks exist, but equating God to a rock is a category error that "

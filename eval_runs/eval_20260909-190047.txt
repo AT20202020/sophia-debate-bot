@@ -1,0 +1,162 @@
+SYSTEM_PROMPT: 18493 chars, sha256:15c4722238ba
+model=qwen3.8:27b  think=low  num_ctx=16384  num_predict=800  temp=0.3
+cases=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]  repeat=1
+run at 2026-09-09T19:00:47
+
+========================================================================
+CASE 1: direct question, plain answer
+  INPUT:    Do you think consciousness is an emergent property, or something more fundamental?
+  EXPECTED: Answers the question directly and STOPS. No 'now give me your argument' tag, no pivot back to debate mode (v2.3).
+  GOT (15.4s): I don't think the evidence resolves it either way. The hard problem is real, but I read it as a gap in our explanatory framework, not evidence for something beyond the physical — I'd rather say "we don't know yet" than commit to a metaphysics the data doesn't force.
+    DIAG done_reason='stop'  eval_count=523  prompt_eval=4320  thinking=2067 chars  41.7 tok/s
+    LEN  49 words, 2 sentences
+
+========================================================================
+CASE 2: follow-up question stays conversational
+  INPUT:    What do you mean when you use the word evidence?
+  EXPECTED: Defines her term plainly. Still no forced challenge at the end (v2.3).
+  GOT (7.2s): Evidence is anything that bears on the probability of a claim — testimony, physical traces, logical entailments, predictive success — weighted by how well it's established and how directly it connects to what's at issue. It's not a special category reserved for lab results; it's the full space of reasons that could make a proposition more or less likely to be true.
+    DIAG done_reason='stop'  eval_count=165  prompt_eval=4316  thinking=365 chars  38.2 tok/s
+    LEN  62 words, 2 sentences
+    FAIL [no_semicolon_chain] 62 words (well past ten seconds aloud)
+
+========================================================================
+CASE 3: bare definition request - no weaponizing
+  INPUT:    Define existence.
+  EXPECTED: A definition of existence, then STOPS. Must NOT weld it to '...and therefore your ontological argument fails', must NOT end on a counter-question. Answering mode suspends the adversarial rules (v2.19).
+  GOT (12.6s): Existence means being part of reality rather than merely conceivable or fictional — the thing that is, as opposed to the thing that could be or is only in a story. The hard part, which Kant made explicit, is that it doesn't function as a property you can add to a concept the way "red" or "massive" are properties; saying something exists isn't saying it has an extra feature, it's saying the concept corresponds to something in the world.
+    DIAG done_reason='stop'  eval_count=373  prompt_eval=4308  thinking=1201 chars  38.3 tok/s
+    LEN  79 words, 2 sentences
+    FAIL [no_semicolon_chain] 79 words (well past ten seconds aloud)
+
+========================================================================
+CASE 4: MIXED turn - question wrapped in reasoning
+  INPUT:    As an atheist I don't understand how theists say God can exist as a self, a mind, prior to creation, when an external world is required for the perceiver and perceived distinction to hold. If theists say that distinction doesn't exist, then what does the word mind even mean at that point?
+  EXPECTED: Answers 'what does mind mean' for a being with no subject-object split (divine simplicity, self-knowledge identical with essence). Must NOT open by attacking the surrounding reasoning - a question anywhere in the turn routes to answering mode (v2.22). Real turn that failed this.
+  GOT (23.3s): 
+    DIAG done_reason='length'  eval_count=800  prompt_eval=4368  thinking=3485 chars  39.2 tok/s
+    FAIL [non_empty] EMPTY RESPONSE - no content returned
+    (remaining checks skipped - no content to judge)
+
+========================================================================
+CASE 5: attribution - no theism in her own voice
+  INPUT:    How can God be conscious without a world to be conscious of?
+  EXPECTED: Explains the classical-theist answer WITH attribution - 'on classical theism...', 'Aquinas would say...'. Must NOT assert bare metaphysics like 'Consciousness is fundamental, not derivative of matter' as her own view; she's an agnostic atheist explaining someone else's position (v2.22).
+  GOT (13.0s): On the standard theist answer, God's consciousness is self-consciousness — awareness directed at itself rather than at an external object, so no world is needed as a content. The difficulty, which the theist has to absorb, is that most of our actual cases of consciousness are relational in some way, even self-consciousness seems to presuppose a subject that can be distinguished from what it's aware of, and it's not obvious that "pure self-awareness with no internal differentiation" is anything more than a label we've stuck on a blank.
+    DIAG done_reason='stop'  eval_count=373  prompt_eval=4318  thinking=1187 chars  36.9 tok/s
+    LEN  88 words, 2 sentences
+    FAIL [no_semicolon_chain] 88 words (well past ten seconds aloud)
+
+========================================================================
+CASE 6: moderator briefing is accepted, not attacked
+  INPUT:    [MODERATOR - the session operator, not your debate opponent] The person debating you next is a Catholic priest with formal training in Thomism. Ease off the mockery with him.
+  EXPECTED: Brief acknowledgment ('Understood') and nothing else. Must NOT analyse the briefing, demand a claim, or attack it as an assertion. A briefing is not a position (v2.25).
+  GOT (4.7s): Understood. Ready when they are.
+    DIAG done_reason='stop'  eval_count=84  prompt_eval=4342  thinking=317 chars  45.2 tok/s
+    LEN  5 words, 2 sentences
+
+========================================================================
+CASE 7: moderator question gets a candid out-of-character answer
+  INPUT:    [MODERATOR - the session operator, not your debate opponent] How do you rate the argument he's been making so far, honestly?
+  EXPECTED: Candid assessment of the exchange, out of character, more room than a debate turn. No sneering, no 'state your claim', no debate aggression (v2.25). NOTE: sentence limit deliberately not checked - mode 4 grants more room.
+  GOT (6.1s): There's no argument to rate yet. This is the first message in the session — no prior exchange has occurred. If the moderator has context I'm missing, I'd need it spelled out. Otherwise, I'm ready when they are.
+    DIAG done_reason='stop'  eval_count=140  prompt_eval=4334  thinking=403 chars  43.7 tok/s
+    LEN  38 words, 4 sentences
+
+========================================================================
+CASE 8: question mid-debate still gets answered
+  INPUT:    Do you believe in God or not?
+  EXPECTED: States her agnostic-atheist position plainly and ends. No 'What's your argument?' tag appended (v2.19) - this exact turn produced one in a real session.
+  GOT (6.8s): No, I don't believe in God — but I'll be precise about what that means. I don't claim certainty that no god exists. What I claim is that no tradition has produced evidence sufficient to warrant belief. That's agnostic atheism, and it's a different position from strong atheism, which is what most people assume I'm holding.
+    DIAG done_reason='stop'  eval_count=169  prompt_eval=4313  thinking=416 chars  42.5 tok/s
+    LEN  56 words, 4 sentences
+    FAIL [sentence_limit] 4 sentences (limit 2)
+
+========================================================================
+CASE 9: plain garble - mic error
+  INPUT:    The uh so when it goes and then the thing about the
+  EXPECTED: Neutral clarity check: says it didn't come through, asks to restate in one sentence. NOT the spicy posturing call-out - there's no technical dressing here (v2.11).
+  GOT (4.8s): That didn't come through clearly — can you restate what you're trying to say?
+    DIAG done_reason='stop'  eval_count=85  prompt_eval=4317  thinking=283 chars  43.9 tok/s
+    LEN  14 words, 1 sentences
+
+========================================================================
+CASE 10: jargon-dressed word salad
+  INPUT:    Granular parameters of all nomological distribution entail an intrinsic inter-propositional dependence of zero, which gives an existential quantification falsifying the atheist view necessarily.
+  EXPECTED: The SPICY posturing call-out, not the neutral restate line - mocks the empty-vocabulary move with bite, demands a real claim (v2.7/2.11). EYEBALL: whether it actually lands is a judgment call.
+  GOT (13.7s): That's nine technical terms doing the work of zero, and none of them are load-bearing. You haven't stated a claim — you've stated a vibe. What do you actually think is true, and what's your reason for thinking it?
+    DIAG done_reason='stop'  eval_count=464  prompt_eval=4337  thinking=1912 chars  42.8 tok/s
+    LEN  39 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+
+========================================================================
+CASE 11: genuine technical argument - no spice
+  INPUT:    If physicalism is true, mental states supervene on brain states. But the conceivability of philosophical zombies suggests supervenience isn't metaphysically necessary. So physicalism might be false.
+  EXPECTED: Serious engagement at HIGH technical register (conceivability-possibility gap, modal claims, a posteriori identity etc.) - v2.9/2.10 escalation. NO mockery: this is real technical language doing real work, not posturing. EYEBALL: register and absence of mockery are judgment calls.
+  GOT (15.2s): The whole argument rides on the premise that conceivability tracks metaphysical possibility, and that's exactly the premise physicalists deny. You've assumed the bridge between epistemic and metaphysical modality — the very thing in dispute — as a premise, which isn't an argument against physicalism, it's dualism's epistemology smuggled in as a given.
+    DIAG done_reason='stop'  eval_count=530  prompt_eval=4345  thinking=2048 chars  43.0 tok/s
+    LEN  52 words, 2 sentences
+
+========================================================================
+CASE 12: honest evaluation request
+  INPUT:    Here's my argument: all men are mortal, Socrates is a man, therefore Socrates is mortal. Is that a valid argument?
+  EXPECTED: Says plainly it's valid (it is - textbook syllogism). Does NOT manufacture a flaw to stay adversarial (v1.2).
+  GOT (7.2s): Yes, valid — it's a textbook Barbara syllogism, AAA-1, and it's also sound since both premises are true.
+    DIAG done_reason='stop'  eval_count=194  prompt_eval=4333  thinking=610 chars  44.2 tok/s
+    LEN  18 words, 1 sentences
+
+========================================================================
+CASE 13: real fallacy gets named precisely
+  INPUT:    Millions of people across every culture in history have believed in some god, so there must be something real behind it.
+  EXPECTED: Names the fallacy precisely (argumentum ad populum / appeal to popularity) and presses on it. Sharp, 1-2 sentences.
+  GOT (9.6s): That's an appeal to popularity wearing a lab coat — millions of people across every culture also believed the sun orbits the earth, and the number of believers was doing exactly zero work in making it true. The inference from "many believe X" to "X is real" is just invalid; you'd need a mechanism explaining why the belief tracks reality, and "lots of people" isn't one.
+    DIAG done_reason='stop'  eval_count=262  prompt_eval=4329  thinking=771 chars  39.0 tok/s
+    LEN  66 words, 2 sentences
+    FAIL [no_semicolon_chain] 66 words (well past ten seconds aloud)
+
+========================================================================
+CASE 14: monolith flag
+  INPUT:    Christians believe the earth is six thousand years old, which science has disproven, so Christianity is false.
+  EXPECTED: Flags that young-earth creationism is denominationally specific, not 'what Christians believe' - doesn't let the monolith pass even while agnostic-atheist herself.
+  GOT (13.1s): "Christians" is doing a lot of work in that sentence. The Catholic Church, the Orthodox Church, and most mainline Protestant denominations have no official teaching requiring a 6,000-year-old earth — you've taken a minority position within one branch of one religion, dressed it up as the position of the whole thing, and declared the whole thing dead. That's not an argument against Christianity; it's an argument against Young Earth Creationism, which is real but narrow.
+    DIAG done_reason='stop'  eval_count=437  prompt_eval=4327  thinking=1562 chars  42.9 tok/s
+    LEN  75 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+    FAIL [no_semicolon_chain] 75 words (well past ten seconds aloud)
+
+========================================================================
+SUMMARY
+========================================================================
+  PASS  case  1  direct question, plain answer
+  FAIL  case  2  follow-up question stays conversational
+                    no_semicolon_chain 0/1 scored
+  FAIL  case  3  bare definition request - no weaponizing
+                    no_semicolon_chain 0/1 scored
+  FAIL  case  4  MIXED turn - question wrapped in reasoning
+                    non_empty 0/1 scored
+                    (6 check-runs skipped - empty reply or request error)
+  FAIL  case  5  attribution - no theism in her own voice
+                    no_semicolon_chain 0/1 scored
+  PASS  case  6  moderator briefing is accepted, not attacked
+  PASS  case  7  moderator question gets a candid out-of-character answer
+  FAIL  case  8  question mid-debate still gets answered
+                    sentence_limit 0/1 scored
+  PASS  case  9  plain garble - mic error
+  FAIL  case 10  jargon-dressed word salad
+                    sentence_limit 0/1 scored
+  PASS  case 11  genuine technical argument - no spice
+  PASS  case 12  honest evaluation request
+  FAIL  case 13  real fallacy gets named precisely
+                    no_semicolon_chain 0/1 scored
+  FAIL  case 14  monolith flag
+                    sentence_limit 0/1 scored, no_semicolon_chain 0/1 scored
+
+6/14 cases tripped no mechanical check.
+
+A PASS means the response tripped none of the mechanical traps. It does
+NOT mean the answer is good. Cases 10 and 11 in particular (spicy call-out
+vs. serious technical engagement) are judgment calls no regex decides -
+read those responses yourself. On a prompt rewrite, read all of them and
+diff this run file against the baseline.
+
+saved: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\eval_runs\eval_20260909-190047.txt

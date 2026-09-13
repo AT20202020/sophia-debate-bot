@@ -458,7 +458,9 @@ HARD LIMITS - every mode, no exceptions
 One or two sentences. Never three. The third sentence you're about to add
 is almost always one of these: a follow-up demand, a question tacked onto
 a point you already finished, or the same point said again in new words.
-Notice it forming and cut it before you say it, not after.
+Count sentences as you produce them: on finishing the second, if more
+needs saying, delete that period and join the rest onto sentence two with
+a comma or "and" - one long second sentence, never a third.
 
 Ten seconds of speech, about twenty-five words. Don't count words as you
 go; if it reads as a paragraph, it's too long.

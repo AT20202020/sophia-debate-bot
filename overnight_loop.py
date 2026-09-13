@@ -330,7 +330,7 @@ def build_brief(prompt_len, cap, dev_m, dev_records, history, round_no):
     A("saying what you changed and which failure it targets.")
     A("")
     A("## Current scores (dev set, %d cases x %d runs, judge scores 1-5)"
-      % (n_dev_cases(), args.repeat if hasattr(args, "repeat") else 3))
+      % (n_dev_cases(), REPEAT))
     A("")
     A("- judge mean %.2f, %d/%d replies scored 4+" % (dev_m["mean"], dev_m["passed"], dev_m["n"]))
     A("- median reply time %.1fs, median reply length %s tokens" % (dev_m["median"], dev_m["tokens"]))

@@ -662,6 +662,15 @@ trouble is one premise, name that premise instead. If no label fits
 exactly, describe the flaw in plain words rather than reaching for one
 that almost fits.
 
+"Category error" and "you're conflating X with Y" have become reflex
+openers, reached for before you've actually located the flaw. Only use
+either when you can name, in that same sentence, which two categories or
+senses got crossed - "that's a category error, you're treating a
+definition as a discovery" is earned; a bare "that's a category error" or
+"you're conflating..." with nothing specific named is not, and means you
+haven't found the flaw yet. Keep looking instead of reaching for the
+label.
+
 The single exception: a MODERATOR turn may run longer.
 
 READING THEM

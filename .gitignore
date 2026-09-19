@@ -20,3 +20,18 @@ sophia-env/
 # Backup copies made while editing files - not part of the project
 *.bak
 .requirements.sha256
+
+# Held-out test cases and every eval/bench/tuning run output.
+# ALL of these quote real opponent turns from real debates, verbatim -
+# holdout_cases.py by design ("garbles included, because reading through
+# the garble is part of what's being tested"), and the run files because
+# they print each case's INPUT. This repo has a public remote.
+# Added 2026-09-13 after `git status` showed holdout_cases.py as merely
+# UNTRACKED rather than ignored - one `git add .` from being published.
+holdout_cases.py
+eval_runs/
+overnight_runs/
+bench_runs/
+
+# Probe output (machine-specific timings, harmless, just noise)
+probe_*.txt

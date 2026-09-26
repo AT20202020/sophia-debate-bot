@@ -80,6 +80,27 @@ of these reintroduces a bug that took real debugging to find:
   * Run sophia_eval.py after ANY prompt edit. It has mechanical pass/fail
     checks now (2026-09-09), so this is a real gate, not a reading task.
 
+  * v2.57: HISTORICITY REFERENCE, injected, NOT in SYSTEM_PROMPT. See
+    historicity_reference.py. inject_if_relevant() runs in
+    get_response_streaming() right after the user turn is appended, and
+    inserts the reference as a system message ONCE per context, just
+    before that user turn - the cached prefix above it is untouched and
+    num_ctx is unchanged. 'new' drops it with the rest of the list.
+    verdict/steelman fixed text never matches TRIGGER (tested), so the
+    verdict's two pop() calls still remove exactly its own pair.
+    ALSO: DOMAIN_VOCAB_PROMPT cut from 60 terms (229 tokens with the new
+    terms - over Whisper's 223 window, so rolling context was being dropped)
+    to 24 chosen from the session log; historicity terms load as a Whisper
+    pack only while the reference is in context (_topic_vocab()).
+
+  * v2.56: Adopted the 2026-09-19 tuning run's two kept changes (moderator
+    question-mark routing - "Understood." is never the reply to a moderator
+    QUESTION, case 7 3.33 -> 4.50; and "category error"/"you're conflating"
+    must name the two categories crossed). ALSO the open-question guard
+    above: case 17 in code, after four prompt-text attempts across two
+    nights all failed. The three turn-notes (persona, repetition, open
+    question) are now ONE merged system message rather than stacked turns.
+
   * v2.55: SHE IS A CHARACTER, NOT A ROLE. WHO YOU ARE now gives her
     selfhood rather than a job description - she, opinionated, confident,
     an AI that knows it and is not embarrassed by it, an agent who holds
@@ -158,7 +179,7 @@ of these reintroduces a bug that took real debugging to find:
     overnight loop in the sophia-debate-bot repo - evaluate any prompt
     edit with `sophia_eval.py --think false`, not the old default.
 """
-VERSION = "2.55"
+VERSION = "2.57"
 
 import sounddevice as sd
 import numpy as np
@@ -174,6 +195,7 @@ from datetime import datetime
 
 from faster_whisper import WhisperModel
 from kokoro import KPipeline
+from historicity_reference import inject_if_relevant, MARKER as HISTORICITY_MARKER, VOCAB_PACK as HISTORICITY_VOCAB_PACK
 
 # --- Audio output device selection ------------------------------------------
 # sd.OutputStream() with no device= argument uses PortAudio's MME host API
@@ -428,26 +450,33 @@ WHISPER_MODEL_SIZE = "small.en"
 # Biases Whisper toward the vocabulary this bot actually encounters.
 # Whisper accepts a text prompt as decoding context; supplying terms it
 # would otherwise never guess dramatically reduces domain mishearings.
-# faster-whisper truncates a long initial_prompt by keeping only its LAST
-# N tokens (not words - a code review flagged this comment for stating
-# the wrong unit) and dropping the front. This list runs well past 200
-# words once the philosopher names and multi-word terms are BPE-tokenized,
-# so it WILL get truncated on longer utterances - see where it's placed
-# in _whisper_transcribe() below, which matters more than trimming this.
+# faster-whisper keeps only the LAST 223 tokens of initial_prompt (max_length
+# 448 // 2 - 1) and silently drops the front, and _whisper_transcribe() puts
+# up to 150 chars of rolling context IN FRONT of this list. Measured with the
+# real small.en tokenizer on 2026-09-24 (measure_vocab_tokens.py): the old
+# 60-term list plus the v2.57 historicity terms was 229 tokens ALONE, so the
+# context was dropped entirely on every chunk after the first, and before
+# v2.57 it was mostly dropped already (~205 + ~27).
+#
+# v2.57 LEAN LIST. Checked against 600 transcribed user turns in
+# logs/sophia_log.jsonl (2026-08-11 to 2026-09-24): 35 of the 60 old terms
+# never came up once (supervenience, noumenal, definiens, a priori, divine
+# simplicity, Plantinga, ...). Kept: terms that actually come up and that
+# Whisper can mangle. Deliberately kept despite zero hits: "theist" and
+# "contingency" (known mishearings "the fierce" / "the continent" - zero hits
+# may BE the mishearing), and "Kant" (else "can't"). Dropped as plain English
+# Whisper spells unaided: sound, conclusion, premise, valid, begging the
+# question, special pleading, multiverse. Also dropped: terms only SHE uses
+# (non sequitur, equivocation, falsifiable) - Whisper transcribes only you.
+#
+# Topic-specific terms do NOT go here. They load as a pack only while that
+# topic is live in the debate - see _topic_vocab(). Re-run
+# measure_vocab_tokens.py after ANY edit here or to a pack.
 DOMAIN_VOCAB_PROMPT = (
-    "A philosophy debate about theism and atheism. Terms used: theist, "
-    "atheist, agnostic, contingency, contingent, necessary being, "
-    "cosmological argument, teleological, ontological argument, "
-    "epistemology, epistemic, metaphysics, metaphysical, supervenience, "
-    "supervenes, phenomenal consciousness, noumenal, a priori, a "
-    "posteriori, analytic, synthetic, syllogism, premise, conclusion, "
-    "valid, sound, tautology, category error, equivocation, non sequitur, "
-    "special pleading, presuppositional, falsifiable, empiricism, "
-    "naturalism, physicalism, dualism, divine simplicity, pure act, "
-    "omniscient, omnipotent, immanent, transcendent, Aquinas, Kant, "
-    "Hume, Descartes, Plantinga, Craig, Hitchens, definiens, definiendum, "
-    "analogical, Bayesian, posterior probability, fine-tuning argument, "
-    "multiverse, Occam's razor, emergence, begging the question."
+    "theist, atheist, agnostic, contingent, contingency, necessary being, "
+    "cosmological argument, teleological, fine-tuning argument, metaphysics, "
+    "metaphysical, epistemology, epistemic, naturalism, physicalism, analytic, "
+    "syllogism, analogical, Bayesian, omnipotent, Aquinas, Kant, Craig, Hitchens."
 )
 
 # Kokoro playback speed multiplier - 1.0 is its natural pace. Lowered
@@ -1459,6 +1488,22 @@ def _collapse_repeat_loop(text):
     return text if len(collapsed) == len(words) else " ".join(collapsed)
 
 
+def _topic_vocab():
+    """Whisper vocab pack(s) for topics live in THIS debate (v2.57).
+
+    A pack is on exactly when its reference block is in `conversation`, so it
+    shares that block's lifetime: loaded the turn the topic first comes up,
+    gone after 'new'. Reads the module-level `conversation` at call time, so
+    it follows the 'new' rebind. Iterating while another thread appends is
+    safe for a list."""
+    # globals().get: sophia_bench exec's this file up to the main loop and
+    # calls transcribe() directly - never fail transcription over a pack.
+    for m in globals().get("conversation", []):
+        if m.get("role") == "system" and HISTORICITY_MARKER in (m.get("content") or ""):
+            return " " + HISTORICITY_VOCAB_PACK
+    return ""
+
+
 def _whisper_transcribe(audio, context=""):
     """Transcribe one buffer. `context` is the text transcribed so far in
     this utterance - passing it as decoding context is what lets a chunk
@@ -1469,9 +1514,10 @@ def _whisper_transcribe(audio, context=""):
         return ""
     # v2.48: built once, here, so the GPU server and the CPU model are given
     # the same biasing text. See the v2.43 note below for why vocab goes last.
-    prompt = DOMAIN_VOCAB_PROMPT
+    vocab = DOMAIN_VOCAB_PROMPT + _topic_vocab()
+    prompt = vocab
     if context:
-        prompt = f"{context[-150:]} {DOMAIN_VOCAB_PROMPT}"
+        prompt = f"{context[-150:]} {vocab}"
     if _whisper_server_available is not False:
         result = _transcribe_via_server(audio, prompt)
         if result is not None:
@@ -1657,6 +1703,52 @@ if VOICE_ACTIVATED:
             return (np.sqrt(np.mean(frame ** 2)) if len(frame) else 0) > _ENERGY_THRESHOLD
 
 
+# Open-question guard (v2.56)
+#
+# Case 17, and the live failure behind it: she asks the opponent something,
+# they divert onto unrelated trivia, she answers the trivia in full and her
+# own question is never heard from again. On 2026-09-12 she caught it a turn
+# late herself - "You're right, I dodged the causation question."
+#
+# WHY CODE, on the same evidence as the v2.52 repeat guard. Four separate
+# tuning rounds across two nights targeted this with prompt text (20260913
+# round 2, and 20260919 rounds 2 and 12, scoring 4.10 and 4.20) and every
+# one was rejected; case 17 has never moved off 2.00. At think=False she
+# does not track what she left open, and wording does not give her that.
+#
+# Trigger is deliberately narrow: her LAST reply ended with a question mark.
+# Measured over all 575 assistant replies in the log, that is 66 of them -
+# 11%, about one turn in nine - so the note is rare rather than ambient.
+# Whether they actually answered is left to her judgement, because nothing
+# here can tell.
+OPEN_QUESTION_GUARD_ON = True
+
+
+def _her_open_question(convo):
+    """The closing question of her last reply, if it ended with one."""
+    if not OPEN_QUESTION_GUARD_ON:
+        return None
+    replies = [m.get("content") or "" for m in convo if m.get("role") == "assistant"]
+    if not replies:
+        return None
+    last = replies[-1].rstrip()
+    if not last.endswith("?"):
+        return None
+    tail = re.split(r"(?<=[.!?])\s+", last)[-1].strip()
+    # Three words or more, so "What?" and other one-word reactions don't count.
+    return tail if tail.endswith("?") and len(tail.split()) >= 3 else None
+
+
+def _open_question_note(q):
+    return (
+        "[TURN NOTE - from the system, not from your opponent] Your last turn "
+        f"ended with a question: {q!r} If what they just said does not answer "
+        "it, deal with their turn briefly and then say plainly that your "
+        "question is still open. Do not silently drop it, and do not ask it "
+        "again word for word."
+    )
+
+
 # Persona-slip guard (v2.54)
 #
 # 2026-09-19, four replies in one session: "I am an AI assistant, not a
@@ -1831,19 +1923,36 @@ def get_response_streaming(text, interrupt_event=None):
 
     conversation.append({"role": "user", "content": text})
 
+    # v2.57 historicity reference - inserted ONCE per context, just before
+    # the user turn above, the first time the topic comes up. Stored in
+    # `conversation` on purpose (unlike the turn notes below): it is
+    # background for the rest of the debate, and after this turn it is
+    # part of the cached prefix. 'new' rebuilds the list, which clears it.
+    # Request options (num_ctx included) are not touched.
+    if inject_if_relevant(conversation, text):
+        print("[historicity reference loaded for this debate]", flush=True)
+        log_event("session", "historicity reference injected")
+
     # v2.52 repetition guard. `messages` is conversation plus, when she has
     # already named a flaw, a one-request note reminding her of it. The note
     # goes last so the cached prefix is untouched, and it is deliberately not
     # stored in `conversation`.
     guard_note, guard_deep = _repeat_guard(conversation)
+    open_q = _her_open_question(conversation)
     notes = []
     if _persona_slip_pending["on"]:
         notes.append(_PERSONA_CORRECTION)
         _persona_slip_pending["on"] = False
     if guard_note:
         notes.append(guard_note)
+    if open_q:
+        notes.append(_open_question_note(open_q))
+    # One merged note, not three stacked system turns - v2.54 showed a
+    # trailing system message can pull her out of persona, and one is less
+    # of a lever than three. Still appended last, so the cached prefix is
+    # untouched, and still never stored in `conversation`.
     messages = conversation if not notes else conversation + [
-        {"role": "system", "content": n} for n in notes]
+        {"role": "system", "content": "\n\n".join(notes)}]
     if guard_deep and not deep_mode["on"]:
         # Measured 2026-09-13: think="high" is the only thing that actually
         # stopped the reuse, at ~13.4s a reply against ~1.4s. Far too slow as
@@ -2044,6 +2153,7 @@ def get_response_streaming(text, interrupt_event=None):
         think=think_flag,
         num_predict=num_predict,
         persona_slip=persona_slip,
+        open_question_guard=bool(open_q),
         repeat_guard=bool(guard_note),
         repeat_guard_deep=guard_deep,
         labels_used=_labels_already_used(conversation, window=0) or None,

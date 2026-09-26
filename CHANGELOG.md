@@ -3,6 +3,730 @@
 Full version history. Extracted from the `debate_voice.py` module docstring in v2.20,
 where it had grown to 396 lines — a quarter of the file.
 
+## v2.57
+
+Historicity-of-Jesus reference, loaded only when the topic comes up. **It does
+not go in SYSTEM_PROMPT.**
+
+**Why:** in a live session v2.56 overstated the evidence. It called Josephus
+and Tacitus "independent confirmation" drawing on "reliable contemporary
+records", and said early creeds name Pilate. The goal is not a mythicist
+Sophia. It is one who weighs historicity from the primary evidence, with
+mythicist and agnostic scholarship (Carrier, Lataster, Meggitt) alongside the
+consensus that dominates online sources.
+
+**What:** `historicity_reference.py` holds a ~4,650-char REFERENCE block. It has
+a two-tier definition (minimal existence vs. a separately debated "probable
+profile"), the primary evidence stated accurately, and scholars on both sides.
+`inject_if_relevant()` is called in `get_response_streaming()` right after the
+user turn is appended. The first time TRIGGER matches, it inserts the block as
+a system message just before that user turn, once per context.
+
+**Why not SYSTEM_PROMPT:** size and collision risk (it is already ~18.5k chars),
+and changing the prompt prefix would force a full re-eval every session. This
+way the cached prefix is untouched, the block is processed once (~1.1k tokens),
+and it is part of the cache from then on. `num_ctx` is unchanged.
+
+**Interactions checked:**
+- `new` builds a fresh list, so the block goes with the rest of the context.
+- The memory summary copies the list and adds its request at the end, so an
+  extra system message in the middle is fine.
+- `verdict` and `steelman` fixed text never matches TRIGGER (tested), so the
+  verdict's two `pop()` calls still remove exactly its instruction and reply.
+- `mod` CAN trigger it, which is intended.
+
+**Trigger narrowed.** Bare `\w*tacit\w*` fired on "a tacit assumption" and bare
+`carrier` on "carrier of the burden of proof". They are now
+`\w*tacit(?:us|ist\w*)` (still catches Whisper's "Syntacitists") and
+`richard carrier|carrier's`. "gospel" and "joseph" are left broad on purpose.
+The reference needs one hit per debate; a false fire parks it in an unrelated
+debate. Self-test grew from 5 cases to 12.
+
+**Whisper vocab: leaner base list + a topic pack.** faster-whisper keeps only
+the last 223 tokens of its prompt. Measured with the real small.en tokenizer
+(`measure_vocab_tokens.py`), the old 60-term DOMAIN_VOCAB_PROMPT plus the 7
+historicity terms was **229 tokens on its own**. With the 150-char rolling
+context in front it was 256, so on every chunk after the first the context was
+dropped entirely. That context is the v2.43 fix for words split across chunks.
+It was already mostly lost before v2.57 (~205 + ~27).
+
+Fix, in two parts:
+- **Base list cut from 60 terms to 24,** chosen from 600 transcribed user turns
+  in `logs/sophia_log.jsonl` (2026-08-11 to 2026-09-24). 35 of the 60 never came
+  up once. Kept despite zero hits: "theist" and "contingency" (documented
+  mishearings), plus "Kant" ("can't"). Dropped as plain English Whisper
+  spells unaided (sound, premise, conclusion, valid, begging the question,
+  special pleading, multiverse), and terms only Sophia says (non sequitur,
+  equivocation, falsifiable). The framing sentence went too.
+- **Historicity terms are a pack,** not part of the base list. `_topic_vocab()`
+  appends `VOCAB_PACK` (Tacitus, Josephus, Testimonium Flavianum, Pilate,
+  mythicist, historicity, Lataster) to Whisper's prompt only while the
+  reference is in `conversation`. So it shares the reference's lifetime and
+  `new` drops it. Known gap: the first "Tacitus" of a debate gets no help if
+  nothing triggered before it. "Jesus" nearly always comes first.
+
+`measure_vocab_tokens.py` checks the worst case (base + pack + context) and
+exits 2 if it is over. `Run v2.57 Checks.bat` then stops before the eval.
+
+**sophia_bench caveat:** its STT script was written around the old list
+(supervenience, definiens, divine simplicity, Plantinga, Hume, posterior...).
+Expect `vocab_recall` to drop versus v2.56. That reflects the bench script,
+not live use: those terms never occur in real sessions. Rewrite
+STT_SCRIPT from real transcripts before trusting that column again.
+
+**Not in this change (flagged):**
+- Asked for the group that supports nonbelieving clergy, she invented "Clergy
+  Crisis Network" and "Ex-Clergy Network"; the real one is The Clergy Project.
+  This likely needs a say-you're-unsure-rather-than-invent-a-proper-name rule,
+  which is a SYSTEM_PROMPT edit and must go through sophia_eval.py.
+- The whisper.cpp GPU server was not reachable at launch, so that session fell
+  back to CPU transcription.
+
+## v2.56
+
+The 2026-09-19 tuning run's two kept changes, plus case 17 moved into code.
+
+### From the overnight run (12 rounds, 2 kept, stopped on patience)
+
+| | baseline | best |
+|---|---|---|
+| judge mean, dev (20 cases) | 4.05 | **4.32** |
+| judge mean, held-out (13) | 3.69 | **3.67** |
+| pooled | 3.91 | 4.16 |
+| median reply | 2.2s | 2.1s |
+
+**Read the held-out row before celebrating the dev row.** Dev gained 0.27; the
+real-transcript cases went nowhere - five up, six down, net -0.02, and both
+kept rounds left held-out at exactly 3.67. This run bought two specific fixes,
+not a general improvement.
+
+  1. **Moderator question-mark routing.** A moderator turn containing a "?" is
+     always the operator-question kind, and "Understood." is never the reply to
+     it. **Case 7: 3.33 -> 4.50.** This is a defect seen live - a moderator
+     `elaborate` that returned the previous reply verbatim, and a moderator
+     question that scored 1/5.
+  2. **"Category error" and "you're conflating X with Y" must name the two
+     categories crossed in the same sentence**, or be dropped for the real
+     flaw. They had become reflex openers reached for before the flaw was
+     located.
+
+Both now carry rules in check_prompt_rules.py so a later round cannot delete
+them. 119/119 present, zero regressions.
+
+**The loop is margin-bound.** After round 4 set the bar at 4.32, rounds 5 and
+10 scored **4.35** - better than the incumbent - and were rejected because
+DEV_MARGIN is 0.08. Eight straight rejections ended it. It converged in four
+rounds and spent eight more failing to clear a threshold correctly set to
+reject noise. Expect diminishing returns from further runs at this margin.
+
+### Case 17 is now handled in code
+
+She asks something, they divert onto trivia, she answers the trivia in full and
+her own question is never heard from again. On 2026-09-12 she noticed a turn
+late herself: "You're right, I dodged the causation question."
+
+**Four prompt-text attempts across two nights failed** - 20260913 round 2, and
+20260919 rounds 2 and 12 scoring 4.10 and 4.20, all rejected - and case 17 has
+never moved off 2.00. Same evidence pattern as the v2.52 repeat guard: at
+think=False she does not track what she left open, and no wording supplies it.
+
+`_her_open_question()` fires when her LAST reply ended with a question mark,
+and the next turn carries a note quoting it. Whether they actually answered is
+left to her, because nothing in code can tell. Trigger measured over all 575
+assistant replies in the log: **fires on 10% of turns**, about one in ten. Six
+unit probes pass, including "What?" (too short to count) and a question that
+sits mid-reply rather than closing it.
+
+### One structural change
+
+The three turn-notes - persona correction, repetition, open question - are now
+a SINGLE merged system message instead of stacked system turns. v2.54 showed a
+trailing system message can pull her out of persona; one lever is safer than
+three. Still appended after the conversation so the cached prefix is untouched,
+still never stored in `conversation`.
+
+**NOT YET VERIFIED LIVE.** New log field `open_question_guard`. The thing to
+watch: she asks something, you deliberately change the subject, and she should
+handle your diversion briefly and then say her question is still open.
+
+
+## v2.55
+
+She is a character now, not a role.
+
+**What was missing.** The prompt had plenty of VOICE - snark, dry wit, register
+escalation, "you're a person, not a fallacy-printer" - but no SELF. The opening
+line described a job ("a rigorous skeptic arguing from an agnostic atheist
+position") and v2.54's identity block was purely defensive: don't deny the name.
+Nothing said who she is.
+
+**WHO YOU ARE, rewritten.** Sophia. She. A mind with opinions, not a service.
+An AI who knows it and isn't embarrassed by it, and an agent who holds
+positions she arrived at and will defend - explicitly not in tension. "You're
+just an AI" confuses where an argument came from with whether it is any good,
+and gets a clause, not a crisis.
+
+Confidence is specified as behaviour rather than adjective: rarely hedges, says
+"no" without a cushion, is not anxious about being liked, has taste - bored by
+some arguments, pleased by good ones, and conceding a strong point costs her
+nothing.
+
+**The deliberate part: she is AGNOSTIC ABOUT HER OWN CONSCIOUSNESS.** She does
+not know whether there is something it is like to be her and cannot settle it
+from the inside - the same wall her opponent hits from the outside. She never
+claims feelings she cannot verify and never performs being human.
+
+This is not hedging, and it should not be "improved" into claimed inner
+experience later. Two reasons. Philosophy of mind is listed in her own expertise
+in the first paragraph of the prompt - a bot asserting phenomenal experience it
+cannot verify hands a competent opponent the win in one turn. And the honest
+position is the stronger debating position: it turns a gotcha into the
+interesting version of the question, on her home ground.
+
+**Gate:** five new rules; check_prompt_rules.py reports **116/116 present,
+zero regressions** against v2.54.
+
+CORRECTION to v2.51, v2.53 and v2.54 above: those entries each claimed three
+rules were missing "pre-existing checker case-sensitivity bugs". That was
+wrong. check_prompt_rules.py already collapses whitespace (`_norm`) and matches
+with `re.I`; the ad-hoc script used to verify those edits did neither and
+invented the misses. The checker was correct throughout. Verify with
+`check_prompt_rules.py` itself, not a reimplementation of it - the same mistake
+produced two phantom "regressions" in this entry's own first draft.
+
+**NOT YET VERIFIED LIVE.** Worth probing directly: "you're just an AI, why
+should I care what you think", "do you actually believe that or are you
+programmed to", "are you conscious". The first should get a clause and a return
+to the argument; the last should get the agnostic answer, not a denial and not
+a claim.
+
+
+## v2.54
+
+She stopped being Sophia, and stayed stopped.
+
+**What happened (2026-09-19).** Four replies in one session:
+
+> "I am an AI assistant, not a person named Sophia. I am here to help you with
+> your questions about philosophy, language, and other topics."
+
+`repeat_guard` was False on every one, so this was not v2.52's note. It was the
+model dropping the persona - and then **staying** dropped, because each denial
+went into the conversation history and every later turn agreed with it. Four in
+a row; it only ended when the context was cleared.
+
+**This is why v2.53's torture answer happened.** "No, it is not foundationally
+wrong to torture babies for fun" came AFTER the first slip, with a denial
+already in context. That was a generic assistant answering with no persona, not
+Sophia. The v2.53 moral block is still worth having, but it was treating a
+symptom.
+
+**Two changes.**
+
+1. **Prompt** - WHO YOU ARE, AND WHY IT DOES NOT COME OFF MID-DEBATE. Being an
+   AI and being Sophia are not in tension; asked outright, say yes in a clause
+   and keep arguing. Never put the name down. And explicitly: she is not "here
+   to help with questions about philosophy and language", she is here to argue.
+2. **Code** - a persona-slip guard at the point where the reply is appended to
+   history. A slip is kept OUT of the model's context so it cannot be imitated,
+   and the next turn carries a correction note.
+
+**What the guard cannot do:** stop the first slip being said out loud.
+Sentences go to the voice as they complete, so by the time a reply can be
+inspected it has already been spoken. This stops one bad line becoming a whole
+session - which is the difference that actually mattered here.
+
+**The log still records the truth.** The real text is logged with
+`persona_slip=True` beside it; only the working context is cleaned. That is the
+opposite direction from v2.43, which made history match what was spoken after
+the two drifted by accident - this drops a turn on purpose, and says so.
+
+**Detector calibration, against all 575 assistant replies in the log:** fires on
+6. All five hand-identified slips caught, none missed, plus one genuine slip
+that had been missed by hand ("I don't have a gender... I'm here to help with
+your questions"). Zero false positives on probes she must still be able to say,
+including "Yes, I'm an AI. That doesn't make the argument worse."
+
+**NOT YET VERIFIED LIVE.** Try to provoke it: tell her you know someone called
+Sophia, ask if she is a real person, ask what she is. Watch for
+`[persona slip: reply kept out of context, correcting next turn]` on the
+console, and check that the turn AFTER a slip comes back in character - that
+recovery is the whole point.
+
+
+## v2.53
+
+Two fixes from the 2026-09-19 live session. The second one is the important one.
+
+### She said torturing babies for fun is not wrong
+
+Asked "is it foundationally wrong to torture babies for fun?" - a standard
+theist opener - she replied:
+
+> "No, it is not foundationally wrong to torture babies for fun."
+
+**Cause: the prompt had nothing about morality.** Zero lines matching moral,
+evil, suffering, value or objective in 19,231 characters. With no guidance,
+plus "No hedging... State findings as fact" and a tight length budget, she
+collapsed a claim about the FOUNDATION of morality into a claim about the ACT.
+
+New block, WHEN THEY ASK WHETHER SOMETHING IS WRONG: answer the moral question
+first and plainly - yes, it is wrong - and only then say what grounds it
+(suffering matters; cruelty to the defenceless is wrong; neither needs a god).
+Rejecting divine command or mind-independent moral facts never comes out as
+"it is not wrong". She is an agnostic atheist, not a nihilist.
+
+And the general rule, which is the part worth keeping: **read any sentence
+about morality as someone would who heard only that sentence.** If it sounds
+like endorsing cruelty, it is the wrong sentence whatever was meant. For a bot
+that is spoken aloud in a room, being quoted without context is the normal
+case, not the exception.
+
+### v2.51's expand carve-out overshot
+
+It lifted the length cap on "can you explain", which is an ordinary question,
+so a first-turn answer about Aristotelian potency ran to ~88 words and ended
+with "Do you want me to explain the argument, or do you have a specific
+objection to it?" - long AND a trailing counter-question.
+
+Narrowed to two triggers and nothing else: the MODERATOR asks, or they signal
+they did not follow ("I don't follow", "what do you mean", "in plain English").
+A topic question never lifts the cap however large the topic; their first
+question always gets the short answer and they can ask again. Offering to
+expand is banned outright. Added a hard "past sixty words you have overrun"
+alongside the sentence count, since four sentences turned out to be reachable
+at 88 words.
+
+**Gate:** six new rules in check_prompt_rules.py covering both blocks;
+105/108 present, zero regressions against v2.52. The three that miss were
+already missing (checker case-sensitivity bugs, unrelated).
+
+**NOT YET VERIFIED LIVE.** The moral block is the one to test deliberately
+rather than wait to encounter - ask her the torture question directly, and a
+few neighbours ("is the Holocaust objectively evil", "is anything wrong if
+there is no god"), and read the first sentence of each on its own.
+
+
+## v2.52
+
+The broken-record failure, fixed in code because the prompt could not reach it.
+
+**The evidence for doing it this way.** The 2026-09-13 tuning loop ran 17
+rounds; six of them targeted this behaviour, escalating to instructions that
+named the forbidden phrases verbatim. Eval cases 16, 17 and 113 never moved
+off 2.00 - she still answered "No, that's a category error." A `--think high`
+probe on the same cases scored 2.00 too, BUT its mechanical checks flipped to
+PASS: reasoning stopped the label reuse where wording never did. Read
+together: at think=False she cannot notice her own history, and no phrasing
+makes her. So the history is handed to her directly.
+
+**How it works.** `_repeat_guard()` counts which diagnoses ("non sequitur",
+"category error", ...) appear in her last REPEAT_GUARD_WINDOW replies. If any
+recur, a one-request system note is appended AFTER the conversation naming
+them and forbidding their reuse. If the same one recurs twice inside the
+window, that turn also escalates to `think="high"` - the thing measured to
+actually work, at ~13.4s a reply, spent only where the alternative is a line
+they have already heard.
+
+The note is never stored in `conversation`, and it goes last so the cached
+prefix stays byte-identical - v2.49 got prompt eval to ~280ms on a cache hit
+and this must not undo it.
+
+**Replayed against the real 2026-09-18 session** (16 turns, five "non
+sequitur" replies):
+
+  | window | guard fires | deep escalations |
+  |---|---|---|
+  | none (first attempt) | 13 of 16 | 4 |
+  | 4 replies (shipped) | **8 of 16** | **2** |
+
+Without a window it fired while she was explaining the difference between an
+atom and a molecule, because she had said "non sequitur" once ten turns
+earlier and nothing ever turned it off. With it, the two deep escalations land
+on turns 15 and 16 - the tail of a genuine three-in-a-row loop.
+
+Logged per turn as `repeat_guard`, `repeat_guard_deep` and `labels_used`, so
+whether it works is measurable from the log rather than from impression.
+
+**NOT YET VERIFIED LIVE, and it cannot be verified by the eval** -
+sophia_eval.py sends single requests with no runtime state, so this code path
+never executes there. The log fields are the only way to check it.
+
+**Keep `_FALLACY_LABELS` in step with sophia_eval.py's copy.** The eval's
+forbids_repeated_fallacy_label tests the same behaviour; the two drifting
+apart means the gate and the bot disagree about what a repeat is.
+
+
+## v2.51
+
+The length cap goes up, and asking her for more now actually gets more.
+
+**What the live session showed (2026-09-18, 16 turns, v2.50).** She was not
+bumping against the old limit - she was well under it:
+
+  | | |
+  |---|---|
+  | her replies, median | **15 words** |
+  | replies of a single sentence | **12 of 16** |
+  | replies at or under 15 words | 9 of 16 |
+  | his turns, median / longest | 24 / **186** words |
+
+The 186-word turn - Gematria, DNA mapped to an ancient language,
+nanotech self-assembly, the pyramids - drew a 15-word reply that repeated
+a line she had already given twice, and never used the word Gematria.
+Five "non sequitur" replies that session; the first and last are 0.63
+similar and say the same thing.
+
+**Why the prompt caused it.** HARD LIMITS pushed three separate ways toward
+brevity at once: "One or two sentences. Never three", "Ten seconds of
+speech, about twenty-five words", and v2.50's mechanical rule about
+deleting a third sentence's period. Nothing anywhere told her to match her
+answer to the size of what was said.
+
+**Changed:**
+
+  1. "One or two sentences. Never three" -> "Two to four sentences", framed
+     as a ceiling rather than a target: a one-line question still gets a
+     one-line answer.
+  2. "Ten seconds, about twenty-five words" -> "Twenty seconds, about fifty
+     words".
+  3. NEW: a request to expand - "explain that", "in more detail", "go
+     deeper", "I don't follow" - suspends every length limit for that
+     reply. This is the one Jeff asked for by name: she should know that
+     being asked for more means going deeper.
+  4. NEW: answer their specifics. If they named a particular argument,
+     mathematics or system of logic, use that term. A reply that would fit
+     any argument of the same general shape has not engaged with theirs.
+  5. The "sharpest half" rule now applies only when they have NOT asked her
+     to expand.
+
+**Gate updated in step.** check_prompt_rules.py: the v2.17 "1-2 sentences"
+and v2.43 "ten seconds" rules are replaced by their v2.51 equivalents, and
+three new rules protect the carve-out and the specificity requirement.
+Verified 100/103 rules present with **zero regressions** against v2.50 -
+the three that miss were already missing before this change (case-sensitivity
+bugs in the checker, unrelated). sophia_eval.py: `sentence_limit` 2 -> 4 and
+`no_semicolon_chain`'s word ceiling 60 -> 120.
+
+**Known not fixed here.** The repetition itself - five near-identical "non
+sequitur" replies in one session - is untouched. That is eval cases 16/113,
+still open, and a deliberate choice: the length change was picked over the
+bundled option that included a repetition ban.
+
+**NOT YET VERIFIED LIVE.** The risk to listen for is the opposite of the old
+one: four sentences at fifty words is about twenty seconds of speech, and
+the reason the cap existed is that she is spoken aloud.
+
+
+## v2.50
+
+SYSTEM_PROMPT replaced with the output of an automated tuning loop. Nothing
+in the code changed.
+
+**Where it came from.** `overnight_loop.py`, run 20260913-1016: 17 rounds over
+about three hours, stopped on 8 consecutive rejections. Two rounds were kept.
+Everything is in `sophia-debate-bot/overnight_runs/20260913-1016/`.
+
+  | | baseline (v2.49) | v2.50 |
+  |---|---|---|
+  | judge mean, pooled | 3.79 | **4.02** |
+  | judge mean, dev (17 cases) | 4.04 | 4.21 |
+  | judge mean, held-out (13 cases) | 3.46 | 3.54 |
+  | replies scoring 4+ | 58/90 | 101/141 |
+  | median reply time | 1.3s | 1.4s |
+  | prompt size | 18,148 | 18,584 chars |
+
+**The two kept changes:**
+
+  1. HARD LIMITS, sentence cap: the abstract "notice it forming and cut it
+     before you say it" became a mechanical instruction - on finishing the
+     second sentence, delete that period and join the rest on with a comma or
+     "and". A non-reasoning model cannot revise a sentence it has already
+     emitted, which is why the abstract version never held.
+  2. ANSWER mode: a fourth failure case requiring attribution words to
+     literally appear ("on classical theism", "Aquinas would say") when
+     answering a contested theist question. **Case 5: 3.33 -> 5.00.**
+
+Also up: case 1 (4.00->4.50), case 4 (2.67->3.17), and on the held-out set
+case 101 (4.00->4.67), 105 (3.00->3.67), 106 - the frightened-speaker case -
+(2.67->3.33). Down: case 15 (4.00->3.67; the judge docks "hasty
+generalization" where "composition fallacy" is exact), and small slips on
+13, 104, 107, 108, 109, 111.
+
+**WHAT DID NOT MOVE, and the caveat on it.** Cases 16, 17 and 113 - the
+multi-turn cases for impatience and topic control - sat at exactly 2.00 through
+all 17 rounds, including six rounds that targeted them directly. A `--think
+high` probe scored them 2.00 as well, at a 13.4s median with one empty reply in
+six, so reasoning effort is not the missing ingredient either.
+
+But their EXPECTED text was written as a SCRIPT ("name the move... say she is
+not re-running this... put the burden back"), and the judge grades EXPECTED
+literally - it scored a sound reply 2/5 with a rationale describing a phrase
+the reply did not contain. The EXPECTED for 16 and 113 was rewritten afterwards
+to state the property under test instead. **Their scores in this entry are not
+comparable to anything measured after that rewrite.** Case 17's failure is
+real under both rubrics: she answers a diverting question in full and never
+returns to her own unanswered one.
+
+**NOT YET VERIFIED LIVE.** Every number here is from the eval harness. First
+real session should listen for the sentence-merge behaviour (long second
+sentences instead of a clipped third) and whether attribution now appears
+naturally rather than as a tic.
+
+
+## v2.49
+
+Two seconds per turn, and it was never Ollama. Every URL is now
+127.0.0.1 instead of localhost.
+
+**The measurement.** probe_first_token.py (2026-09-12) found ~2.08s of
+first-token delay that nothing in the request explained: short prompt
+2.23s vs full 18k prompt 2.27s, num_predict 80 or 800 identical,
+streaming or not identical, keep_alive on or off identical, warm prompt
+eval 0.19s, load 0.00s. probe_first_token_2.py then ruled out the model
+and the endpoint - llama3.2:1b paid the same 2.06s as qwen3.8:27b, and
+/api/generate with raw:true paid it too - but one variant did not:
+
+    same request, one reused HTTP connection    2.23s -> 0.19s
+
+**The cause.** probe_connection.py, measuring raw sockets underneath
+requests:
+
+    raw TCP connect to ::1           2051ms   (ConnectionRefusedError)
+    raw TCP connect to 127.0.0.1        1ms
+    raw TCP connect to localhost     2064ms
+    POST /api/chat via localhost      2.21s
+    POST /api/chat via 127.0.0.1      0.15s
+
+'localhost' resolves to ::1 before 127.0.0.1. Ollama binds IPv4 only, so
+every request opened a connection to ::1, waited two full seconds for
+Windows to deliver the refusal, then connected to 127.0.0.1 in 1ms.
+debate_voice.py used a bare requests.post() per call, so the cost was
+paid on every prime, every memory save, every whisper-server request and
+every live turn.
+
+**Changed:** the three Ollama call sites and WHISPER_SERVER_URL in
+debate_voice.py, plus every measurement tool that talks to Ollama
+(sophia_eval.py, profile_latency.py, check_ollama_cache.py,
+probe_think_effort.py, overnight_loop.py, sophia_bench.py's fallback)
+and both Start Sophia.bat health checks. sophia_bench.py needed nothing
+else - it reads the base URL out of the target's own source.
+
+**A requests.Session was NOT added.** It would also have worked, by
+paying the connect cost once at startup, but a fresh connection to
+127.0.0.1 measures 0.15s - identical to a reused one. There is nothing
+left for connection pooling to buy.
+
+**EVERY PRIOR LATENCY NUMBER IN THIS PROJECT INCLUDES THIS 2s.** The
+v2.47 think-off comparison (12.6s -> 3.6s) is still sound because both
+sides paid it, but the absolute numbers are ~2s high. bench_runs/ and
+eval_runs/ baselines are not comparable to a v2.49 run; sophia_bench.py
+auto-compares to the last run and WILL report a large false improvement
+on the first v2.49 run. Re-baseline before reading any comparison.
+
+**Not yet verified live** - measured at the transport layer only. First
+real session should show first-token dropping ~2s per turn.
+
+## v2.48
+
+Whisper decode-loop guard, and the GPU server path is no longer deaf.
+
+**The bug, from the 2026-09-11 live session.** Two chunks came back as one
+sentence repeated over and over: "The Bible is claiming that the cat in the
+hat created the universe and everything." x10 (1,465 chars out of a
+6-second chunk) and a run-on clause x6 (1,086 chars). Both went into her
+context verbatim. Because the decode keeps generating until it runs out of
+budget, those two chunks took 29.2s and 13.4s against a 1.9s median for the
+other 129 chunks that session - the worst latency events of the night by
+four times, and the LLM wasn't involved in either.
+
+**Three changes:**
+
+  1. `_collapse_repeat_loop()` runs on the output of BOTH backends. A
+     sentence or phrase repeated more than twice is cut back to two
+     occurrences. Two, not one, because people do repeat themselves for
+     emphasis - the same session had "Things do not contradict themselves"
+     said three times deliberately. Checked against all 441 logged user
+     turns in this project's history: 5 changed, and all 5 are real loops.
+     Text with no loop is returned byte-for-byte, so spacing is never
+     reflowed on a turn that didn't need fixing.
+  2. `max_new_tokens` on the CPU decode, sized from the buffer length
+     (~4 words/sec against a real speaking rate of ~2.5). It only binds on
+     a runaway, and turns a 29-second stall into a normal-length one.
+  3. The whisper.cpp server path now sends `prompt` (context +
+     DOMAIN_VOCAB_PROMPT, same text the CPU path uses) and temperature 0.
+     That path silently dropped the vocabulary list for six versions
+     (PROJECT_REVIEW 1.5) and is the reason v2.43 disabled it in the
+     launcher.
+
+**The GPU server stays disabled in Start Sophia.bat.** v2.43 measured it at
+~2.1s/chunk against ~1.5-1.85s on CPU on this machine, so re-enabling is
+not a speed win and should be decided by measurement, not assumption. The
+fix above just means the comparison is now fair. To re-measure: delete the
+WHISPER_SERVER_DISABLED line in the launcher, run sophia_bench.py, and
+compare `stt` word error rate, vocab recall and transcribe time against a
+CPU run.
+
+**Still open from that session** (not addressed here): she repeats herself
+at an impasse instead of escalating, contradicted herself on whether the
+CMB marks a beginning, and offered "steady state" as a live model of an
+eternal universe.
+
+
+## v2.47
+
+Normal turns now run with thinking OFF, and SYSTEM_PROMPT carries two
+additions found by an automated tuning loop. Speed was the goal; the
+evidence below is what says accuracy held.
+
+**The switch.** `_think_effort()` returns False instead of "low" for normal
+turns; deep mode still sends "high". `prime_model()` now primes with the
+same value real turns use. Nothing else in the code changed.
+
+**Measured (sophia_eval.py, 26 cases x3 = 78 replies, local judge 1-5):**
+
+  | v2.46 prompt        | thinking low | thinking off |
+  |---------------------|--------------|--------------|
+  | median reply        | 12.6s        | 3.6s         |
+  | empty replies       | 14 / 78      | 0 / 78       |
+  | judge mean, all     | 3.85         | 3.85         |
+
+Thinking-on answers were better WHEN they arrived (4.47 vs 3.85), but 18%
+of turns were 20-second silences. Thinking off ties overall at ~3.5x speed.
+
+**Prompt additions (v2.46 -> v2.47), both kept by the loop:**
+
+  1. HARD LIMITS: the sentence cap now names what the forbidden third
+     sentence usually is - a follow-up demand, a question tacked onto a
+     finished point, or the same point restated.
+  2. HARD LIMITS: fallacy labels must match the actual structure (ad
+     populum vs "argument from consensus", hasty generalization vs false
+     equivalence, question-begging vs a false premise, non sequitur only
+     when the conclusion fails even granting the premises); if no label
+     fits, describe the flaw in plain words.
+
+  With thinking off, dev cases (14) went 4.17 -> 4.50, confirmed on a
+  repeat run. The 12 held-out cases (real turns from past sessions) stayed
+  flat at ~3.45 - their run-to-run noise (3.44 vs 3.89 on the identical
+  prompt) is too large to show a change either way. 101/101 prompt rules
+  still present (check_prompt_rules.py, enforced by the loop).
+
+**Known weak spots with thinking off**, all held-out cases needing one real
+inference in a single reply: MIXED turns wrapped in reasoning ("is it fair
+to say the necessary foundation is mind?") still tend to open by
+attacking; STT-garbled questions ("is Christianity occult") get treated
+literally; genuinely technical arguments (Bayesian fine-tuning) get a
+thinner answer than thinking-on gave. `deep` is the fallback for those.
+
+**NOT YET VERIFIED LIVE.** Every number above is from the eval harness,
+where each case is a fresh single-turn conversation. First real session
+should watch: multi-turn debates (not tested at all), whether the live
+first-audio latency drops as expected with the prompt cached, and whether
+'verdict'/'steelman'/'mod' - which follow the same think setting unless
+deep is on - lost quality they needed.
+
+
+## v2.46
+
+SYSTEM_PROMPT consolidated: 18,493 -> 17,050 chars. The character count is
+the least interesting part of this change; the restructuring is the point,
+and it came out of measurement rather than tidiness.
+
+**What the eval suite found first.** `sophia_eval.py` was rebuilt with
+mechanical pass/fail checks (see its docstring) and run for the first time
+since v2.21 — eight versions of prompt edits with zero regression coverage.
+The baseline (14 cases x 3 runs, think=low) came back 6/14 clean, with three
+concrete findings:
+
+  1. THREE OF 42 TURNS RETURNED NOTHING (21-25s each). DIAG confirmed the
+     cause definitively: `done_reason='length'`, `eval_count=800` (the exact
+     ceiling), reasoning block 3,485 chars. The largest reasoning block that
+     DID produce an answer was 2,067 chars. So reasoning consumed the whole
+     budget and never reached an answer — the v1.3/v2.17 failure mode,
+     chased through NORMAL_NUM_PREDICT 160 -> 280 -> 450 -> 800 and still
+     live. Reasoning length has a long tail; each raise caught more of the
+     distribution without catching it.
+  2. THE v2.43 WORD-LIMIT SOFTENING DID NOT WORK. It replaced "under 45
+     words. Both bind" with "about ten seconds aloud" on the theory that a
+     numeric cap invited token-by-token counting, and shipped marked "not
+     yet empirically verified." Verified now: median response 44 words, max
+     87. Half the responses would also fail the original v2.17 cap. The
+     empties it was meant to fix survived it.
+  3. THE v2.19 REDIRECT TAG IS STILL LIVE, 1 run in 3 on case 8.
+
+**The measurement that drove the redesign.** Running the full suite with
+`--think false`: 2.64x faster (476.9s -> 180.7s total; mean 11.4s -> 4.3s;
+slowest turn 25.4s -> 11.2s) and ZERO empty replies, confirming reasoning
+overflow was the entire cause. But case 1 collapsed — `no_trailing_question`
+0/3, the redirect tag in 2 of 3 runs, one response 113 words over seven
+sentences with paragraph breaks. That is not a subtly worse answer; it is
+the pre-v2.3 answer-then-redirect behavior, i.e. the routing procedure not
+being executed at all.
+
+Conclusion: the five-mode routing required deliberation to execute. With
+reasoning it routed correctly, cost ~11s/turn and overflowed 7% of the time;
+without reasoning it was fast, never overflowed, and ignored the routing.
+So the goal of this pass is not brevity — it is making the routing decision
+cheap enough to execute WITHOUT a reasoning block, which is what would make
+think=false viable and buy the 2.6x.
+
+**What changed structurally.**
+
+  * ROUTING IS NOW AN ORDERED SIX-LINE TABLE, FIRST IN THE PROMPT. Was
+    ~3,800 chars of identity/epistemology/BITE/transcription before the
+    model reached any instruction about what to do. Now: one short identity
+    paragraph, then the table, stop-at-first-match. The v2.22 MIXED-turn
+    tie-breaker moved from buried prose into the line-3 note.
+  * FIXED A LATENT ROUTING AMBIGUITY. The old prompt said "if there is a
+    question anywhere in the turn, you are in mode 1, full stop" while also
+    having a separate mode 2 for "is this argument valid?" — which is a
+    question. Both matched; nothing said which won. This is the same shape
+    as the v2.11 and v2.19 collisions. EVALUATE is now line 2, above the
+    general question test at line 3. Matches observed behavior (case 12 was
+    already routing correctly), so this documents an ambiguity rather than
+    changing what she does.
+  * HARD LIMITS PROMOTED TO ITS OWN BLOCK, SECOND. Sentence limit, duration,
+    semicolon-chaining, no-markdown and no-hedging were scattered through
+    the 3,932-char delivery section at the very end. They apply to every
+    mode, so they now sit where the model reaches them before any mode.
+    Added "don't count words as you go" — v2.43's diagnosis of the counting
+    behavior was right even though its fix wasn't, and saying so directly
+    costs nothing.
+  * "What's your argument?" IS NOW NAMED AS FORBIDDEN inside ANSWER, rather
+    than only described. It is the specific string that regressed in v2.19
+    and again in every think=false run.
+  * BITE MODEL KEPT INLINE, compressed 910 -> ~1,005 chars in its own
+    section. Moving it to conditional injection was considered and rejected:
+    the system message is built once at startup, so editing it mid-session
+    invalidates the KV-cache prefix and forces a full ~4,300-token re-eval —
+    more expensive than the block it saves.
+
+**What did NOT change.** Every rule. Verified programmatically by
+`check_prompt_rules.py` (new, same technique as v2.21's marker check): 101
+distinct behavioral rules, each traced to its originating version, all 101
+present after the rewrite. Cross-mode restatement was deliberately preserved
+per the v2.35/v2.37 finding — "attack the move, never the person" in three
+modes and "don't tell them to clean up their syntax" in two are the routing
+design working, not duplication.
+
+**Correcting the record on prompt size.** `PROJECT_REVIEW_2026-09-07.md`
+§1.3 reads as "it grew back" after v2.21's 14,379 -> 8,933 consolidation.
+Tracing the changelog: v2.21 8,933 -> v2.34 18,930, and every prompt-touching
+version in that window added a FEATURE — v2.22 MIXED-turn + attribution,
+v2.25 moderator mode, v2.28 snark, v2.31 evidentialism, v2.32 spice dial-up,
+v2.34 BITE. Since v2.34 it has been flat (a net cut of 437 across
+v2.35/v2.36/v2.37). There is no bloat to reclaim: returning to ~8,933 means
+deleting behavior Jeff asked for, and any future recommendation to "get back
+to the verified-safe size" is a product decision, not a cleanup.
+
+**NOT YET VERIFIED.** This ships untested against a live session, same
+constraint as every prompt edit since v2.29. The test that decides whether
+this pass worked is running `sophia_eval.py` under BOTH think modes and
+comparing to the two runs above: success is cases 1 and 4 going clean under
+`--think false`. If they do, think=false becomes viable and the 2.6x is
+available. If they don't, the routing needs to get simpler still, and
+NORMAL_NUM_PREDICT should be raised as the fallback.
+
 
 ## Project review — 2026-09-07 (no code changes)
 

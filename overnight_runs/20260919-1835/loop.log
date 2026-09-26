@@ -1,0 +1,99 @@
+[18:35:31] Overnight loop 20260919-1835 - rounds<=30, hours<=7.5, patience 8
+[18:35:32] claude: 2.1.268 (Claude Code)
+[18:35:32] keep-awake: on
+[18:35:32] git branch overnight/20260919-1835 created; your main branch is untouched
+[18:35:32] baseline: reusing eval_all-v2.55-baseline_20260919-181001.json
+[18:35:32] baseline: dev 4.05, held-out 3.69, pooled 3.91, median 2.2s
+
+[18:35:32] === round 1 ===
+[18:36:26]     reviser finished in 0.9 min (exit 0)
+[18:36:26]     change: Added an explicit ban on opening a reply with "You're conflating..."/"You are conflating..." when a question is present (in the routing explanation and as a named failure mode in ANSWER), targeting the reflexive attack-opener that misfired in question-wrapped-in-reasoning turns (Case 4, 3/3 runs) an
+[18:48:20]     dev eval done in 11.9 min
+[18:48:20]     dev 3.92 (best 4.05), median 2.0s, tokens 57.0
+[18:48:20]     rejected: no clear dev gain
+
+[18:48:20] === round 2 ===
+[18:48:59]     reviser finished in 0.6 min (exit 0)
+[18:48:59]     change: Added a rule in ANSWER mode stating that a diversion onto an unrelated topic does not erase her own previously unanswered question — she must answer the diversion in one clause, then say her earlier question is still open — targeting Case 17's 3/3 dev failures where she fully answered trivia diversi
+[19:00:21]     dev eval done in 11.4 min
+[19:00:21]     dev 4.10 (best 4.05), median 2.2s, tokens 58.0
+[19:00:21]     rejected: no clear dev gain
+
+[19:00:21] === round 3 ===
+[19:01:04]     reviser finished in 0.7 min (exit 0)
+[19:01:04]     change: Added a rule in the HARD LIMITS fallacy-naming section (applies every mode, unconditional) requiring "category error" and "you're conflating X with Y" to be paired with the specific categories/senses crossed in the same sentence, or dropped in favor of the real flaw — targeting the 7/60 "category er
+[19:12:40]     dev eval done in 11.6 min
+[19:12:40]     dev 4.22 (best 4.05), median 2.3s, tokens 60.5
+[19:12:40]     promising - confirming dev and running held-out
+[19:23:39]     dev eval done in 11.0 min
+[19:32:58]     holdout eval done in 9.3 min
+[19:32:58]     dev (2 runs) 4.19, held-out 3.67 (best 3.69)
+[19:32:58]     KEPT - new best: pooled 4.06
+
+[19:32:58] === round 4 ===
+[19:34:01]     reviser finished in 1.0 min (exit 0)
+[19:34:01]     change: In the MODERATOR section, added an explicit question-mark check ("does this moderator turn contain a question mark?") that routes to the operator-question branch and states "Understood." alone is never the reply to it, targeting the recurring failure (Case 7, 1/5 judge score, seen across multiple de
+[19:46:08]     dev eval done in 12.1 min
+[19:46:08]     dev 4.30 (best 4.19), median 2.1s, tokens 62.0
+[19:46:08]     promising - confirming dev and running held-out
+[19:58:07]     dev eval done in 12.0 min
+[20:07:41]     holdout eval done in 9.6 min
+[20:07:41]     dev (2 runs) 4.32, held-out 3.67 (best 3.67)
+[20:07:41]     KEPT - new best: pooled 4.16
+
+[20:07:41] === round 5 ===
+[20:08:39]     reviser finished in 1.0 min (exit 0)
+[20:08:39]     change: Added a concrete pre-send self-check in the CLAIM section ("does this restate a diagnosis you already gave, just in different words? If yes, banned—send a new distinction, a question shifting the burden, or a flat 'already answered this' instead") targeting the recurring-stipulation failure where sh
+[20:20:02]     dev eval done in 11.4 min
+[20:20:02]     dev 4.35 (best 4.32), median 2.0s, tokens 65.5
+[20:20:02]     rejected: no clear dev gain
+
+[20:20:02] === round 6 ===
+[20:20:34]     reviser finished in 0.5 min (exit 0)
+[20:20:34]     change: Added a forbidden-behavior bullet in ANSWER mode banning verbatim mode-narration phrases ("You are asking a question, so I will answer it," "This is an ANSWER turn") and instructing to open with substance first, targeting the recurring no_mode_narration failures seen across Case 4 runs where she ann
+[20:32:42]     dev eval done in 12.1 min
+[20:32:42]     dev 4.32 (best 4.32), median 2.0s, tokens 57.5
+[20:32:42]     rejected: no clear dev gain
+
+[20:32:42] === round 7 ===
+[20:33:54]     reviser finished in 1.2 min (exit 0)
+[20:33:54]     change: Moved the "never lean on the same fallacy label twice running" rule from the CLAIM-only section into HARD LIMITS (applies every mode, no exceptions), since Case 16's turns end in a question mark and therefore route to ANSWER mode, where "every adversarial rule below is suspended" meant the anti-repe
+[20:45:47]     dev eval done in 11.9 min
+[20:45:47]     dev 4.23 (best 4.32), median 2.2s, tokens 62.0
+[20:45:47]     rejected: no clear dev gain
+
+[20:45:47] === round 8 ===
+[20:46:52]     reviser finished in 1.1 min (exit 0)
+[20:46:52]     change: Added a HARD LIMITS rule (applies to every mode, unconditional — no question-detection gate) banning the literal opening words "You're"/"You are" as the first two words of any reply, requiring the specific senses/categories to be named before the accusation; targets the highest-frequency failure pat
+[20:59:17]     dev eval done in 12.4 min
+[20:59:17]     dev 4.13 (best 4.32), median 2.4s, tokens 72.0
+[20:59:17]     rejected: no clear dev gain
+
+[20:59:17] === round 9 ===
+[21:00:07]     reviser finished in 0.8 min (exit 0)
+[21:00:07]     change: Added a concrete pre-send sentence-counting check ("count the sentences you are about to say: one, two, three, four, stop; if there's a fifth, delete it rather than trim it") to the HARD LIMITS sentence-count rule, targeting the sentence_limit mechanical-check failures seen on otherwise high-scoring
+[21:11:47]     dev eval done in 11.7 min
+[21:11:47]     dev 4.22 (best 4.32), median 1.9s, tokens 53.5
+[21:11:47]     rejected: no clear dev gain
+
+[21:11:48] === round 10 ===
+[21:12:30]     reviser finished in 0.7 min (exit 0)
+[21:12:30]     change: Broadened the ANSWER-mode "attribute, don't assert" rule to explicitly cover contested non-theism metaphysics (consciousness, free will, personal identity, ethics), naming the forbidden self-assertion openers "I view it as...", "I think X is...", "I don't think X is... it's actually..." and requirin
+[21:24:05]     dev eval done in 11.6 min
+[21:24:05]     dev 4.35 (best 4.32), median 2.1s, tokens 59.0
+[21:24:05]     rejected: no clear dev gain
+
+[21:24:05] === round 11 ===
+[21:25:37]     reviser finished in 1.5 min (exit 0)
+[21:25:37]     change: Added a literal yes/no self-check gate right at the ROUTE-THE-TURN step ("does this turn contain a question mark... if yes, ANSWER mode, first two words never 'You're'/'You are'") targeting the attack-opener misfire on question-wrapped-in-reasoning turns (Case 4 runs 2/3, "You are conflating...") — 
+[21:37:50]     dev eval done in 12.2 min
+[21:37:50]     dev 4.32 (best 4.32), median 2.1s, tokens 57.5
+[21:37:50]     rejected: no clear dev gain
+
+[21:37:50] === round 12 ===
+[21:38:48]     reviser finished in 1.0 min (exit 0)
+[21:38:48]     change: Added a HARD LIMITS rule (applies to every mode, unconditional, not gated by ANSWER routing) requiring Sophia to track her own unanswered questions from her last two turns and, when the user diverts to a new topic, answer it in one clause then explicitly say her earlier question is still open — targ
+[21:50:37]     dev eval done in 11.8 min
+[21:50:37]     dev 4.20 (best 4.32), median 2.1s, tokens 62.5
+[21:50:37]     rejected: no clear dev gain
+[21:50:37] STOPPED: 8 rejected rounds in a row. Report: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\overnight_runs\20260919-1835\REPORT.md

@@ -1,0 +1,9 @@
+[18:34:25] Overnight loop 20260919-1834 - rounds<=30, hours<=7.5, patience 8
+[18:34:25] claude: 2.1.268 (Claude Code)
+[18:34:26] keep-awake: on
+[18:34:27] git branch overnight/20260919-1834 created; your main branch is untouched
+[18:34:27] baseline: reusing eval_all-v2.55-baseline_20260919-181001.json
+[18:34:27] baseline: dev 4.05, held-out 3.69, pooled 3.91, median 2.2s
+
+[18:34:27] === round 1 ===
+[18:35:27] STOPPED: stopped by you (Ctrl+C). Report: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\overnight_runs\20260919-1834\REPORT.md

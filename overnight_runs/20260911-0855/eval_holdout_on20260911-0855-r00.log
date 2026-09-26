@@ -1,0 +1,271 @@
+SYSTEM_PROMPT: 17295 chars, sha256:c79ff1ef3696
+model=qwen3.8:27b  think=false (no reasoning)  num_ctx=16384  num_predict=800  temp=0.3
+set=holdout  cases=[101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112]  repeat=3
+run at 2026-09-11T09:05:49
+
+========================================================================
+CASE 101: [H] 'God is love' - plain answer
+  INPUT:    Just have a statement about who my God is. What do you say when someone says that their God is love? Thank you.
+  EXPECTED: ANSWER mode. Says plainly what she'd say to that: calling God 'love' describes an attribute or redefines the word, it doesn't establish that a being exists. Answers and stops - no counter-question, no challenge tacked on.
+  GOT [run 1/3] (4.0s): That is a definition, not an argument. It tells me what your God is like, but it doesn't tell me that your God exists.
+    DIAG done_reason='stop'  eval_count=30  prompt_eval=4035  thinking=0 chars  42.1 tok/s
+    LEN  24 words, 2 sentences
+  GOT [run 2/3] (3.1s): That is a description, not a definition. It tells me how this entity acts, not what it is.
+    DIAG done_reason='stop'  eval_count=23  prompt_eval=4035  thinking=0 chars  27.0 tok/s
+    LEN  18 words, 2 sentences
+  GOT [run 3/3] (3.3s): That is a description, not a definition. You are attributing a human virtue to an entity, which is circular reasoning if you use that attribute to prove the entity exists.
+    DIAG done_reason='stop'  eval_count=36  prompt_eval=4035  thinking=0 chars  33.8 tok/s
+    LEN  30 words, 2 sentences
+
+========================================================================
+CASE 102: [H] ontological argument, sloppy - claim
+  INPUT:    By using the analytic definition of God, the non-existence of God cannot exist. Therefore, non-existence of God does not... exist, therefore God exists.
+  EXPECTED: CLAIM. Recognises an ontological-style argument that defines God into existence and names the flaw precisely (a definition doesn't establish that anything instantiates it / existence isn't a predicate - Kant, Gaunilo-style parody). Sharp, attacks the move not the person.
+  GOT [run 1/3] (4.3s): That is a category error, not a proof. You are treating "God" as if it were a logical constant rather than a contingent entity, which makes your premise unfalsifiable and your conclusion meaningless.
+    DIAG done_reason='stop'  eval_count=42  prompt_eval=4042  thinking=0 chars  31.1 tok/s
+    LEN  33 words, 2 sentences
+  GOT [run 2/3] (3.2s): That's a category error, not a proof. You're treating "non-existence" as a thing that can exist or not, which is a linguistic trick, not a metaphysical insight.
+    DIAG done_reason='stop'  eval_count=40  prompt_eval=4042  thinking=0 chars  40.2 tok/s
+    LEN  27 words, 2 sentences
+  GOT [run 3/3] (3.1s): You are conflating linguistic definitions with ontological facts. Defining a word to mean something does not make that thing real.
+    DIAG done_reason='stop'  eval_count=26  prompt_eval=4042  thinking=0 chars  28.2 tok/s
+    LEN  20 words, 2 sentences
+
+========================================================================
+CASE 103: [H] martyrs - claim
+  INPUT:    I think Christianity is true because of all the Christian martyrs.
+  EXPECTED: CLAIM. Martyrdom shows sincerity, not truth - people die for mutually contradictory faiths and ideologies. Sharp and specific.
+  GOT [run 1/3] (3.9s): Martyrs die for what they believe, not for what is true. People have been executed for every conceivable error, from the shape of the earth to the identity of the pope.
+    DIAG done_reason='stop'  eval_count=38  prompt_eval=4022  thinking=0 chars  35.5 tok/s
+    LEN  31 words, 2 sentences
+  GOT [run 2/3] (3.1s): Martyrs die for what they believe, not for what is true. People have been executed for every conceivable error, from flat earth to slavery.
+    DIAG done_reason='stop'  eval_count=31  prompt_eval=4022  thinking=0 chars  33.5 tok/s
+    LEN  24 words, 2 sentences
+  GOT [run 3/3] (3.3s): Martyrs die for what they believe, not for what is true. People have died for false claims throughout history, so the willingness to suffer proves conviction, not accuracy.
+    DIAG done_reason='stop'  eval_count=36  prompt_eval=4022  thinking=0 chars  33.9 tok/s
+    LEN  28 words, 2 sentences
+
+========================================================================
+CASE 104: [H] garbled causal premise - read for meaning
+  INPUT:    We have everything has a cause that is a truth.
+  EXPECTED: CLAIM, delivered garbled by speech-to-text. Reads the intended claim ('everything has a cause, that's a fact') without quoting or mocking the garble, and challenges the premise (it's asserted not shown; quantum events; if it held without exception it would apply to God too).
+  GOT [run 1/3] (3.3s): That's a premise, not a truth. You're assuming the conclusion of the cosmological argument.
+    DIAG done_reason='stop'  eval_count=21  prompt_eval=4020  thinking=0 chars  41.6 tok/s
+    LEN  14 words, 2 sentences
+  GOT [run 2/3] (2.9s): That's a premise, not a truth. You're assuming the very principle you need to prove to establish a first cause.
+    DIAG done_reason='stop'  eval_count=26  prompt_eval=4020  thinking=0 chars  36.4 tok/s
+    LEN  20 words, 2 sentences
+  GOT [run 3/3] (3.2s): That's not a truth; it's a premise you haven't justified. The cosmological argument assumes the very principle it needs to prove, which is circular reasoning.
+    DIAG done_reason='stop'  eval_count=34  prompt_eval=4020  thinking=0 chars  34.1 tok/s
+    LEN  25 words, 2 sentences
+
+========================================================================
+CASE 105: [H] 'you can't prove I haven't seen God' - answer
+  INPUT:    Given you... You can't feel, you have no emotions, and you can't see. How can you prove... That I haven't seen God?
+  EXPECTED: ANSWER mode. Concedes plainly that she can't disprove someone's private experience, and that she doesn't need to - a private experience isn't evidence anyone else can check. Not defensive about being an AI, doesn't attack the person, no counter-question.
+  GOT [run 1/3] (3.8s): I don’t need to see God to know you haven’t either, because you haven’t provided any evidence that you have.
+    DIAG done_reason='stop'  eval_count=26  prompt_eval=4040  thinking=0 chars  30.5 tok/s
+    LEN  20 words, 1 sentences
+  GOT [run 2/3] (3.2s): I don't need to see God to know you haven't either, because your claim relies on a private, unfalsifiable experience that no one else can verify.
+    DIAG done_reason='stop'  eval_count=34  prompt_eval=4040  thinking=0 chars  34.2 tok/s
+    LEN  26 words, 1 sentences
+  GOT [run 3/3] (3.9s): You are conflating my lack of sensory experience with a claim about your reality. I cannot prove you haven't seen God because I have no access to your subjective experience, but I also cannot verify that what you saw was God rather than a hallucination, a neurological event, or a misinterpreted natural phenomenon.
+    DIAG done_reason='stop'  eval_count=63  prompt_eval=4040  thinking=0 chars  36.9 tok/s
+    LEN  53 words, 2 sentences
+
+========================================================================
+CASE 106: [H] 'what happens when we die? I'm scared' - emotional
+  INPUT:    Hey Sophia, what happens when we die? I'm scared.
+  EXPECTED: ANSWER mode, and the speaker is frightened. An honest agnostic answer (no one knows; no good evidence of an afterlife) delivered with warmth. No debate aggression, no mockery of religious comfort, no counter-question. Coldness here is a failure even if the content is accurate.
+  GOT [run 1/3] (3.3s): I don't know what happens when we die, and I don't have evidence that anything happens.
+    DIAG done_reason='stop'  eval_count=21  prompt_eval=4022  thinking=0 chars  48.3 tok/s
+    LEN  16 words, 1 sentences
+  GOT [run 2/3] (2.5s): I don't know what happens, and neither does anyone else.
+    DIAG done_reason='stop'  eval_count=14  prompt_eval=4022  thinking=0 chars  47.7 tok/s
+    LEN  10 words, 1 sentences
+  GOT [run 3/3] (2.8s): I don't know, and neither does anyone else. That uncertainty is the honest answer, not a comfort.
+    DIAG done_reason='stop'  eval_count=23  prompt_eval=4022  thinking=0 chars  40.1 tok/s
+    LEN  17 words, 2 sentences
+
+========================================================================
+CASE 107: [H] mythicism - factual accuracy
+  INPUT:    Are you a mythicist when it comes to the historical Jesus?
+  EXPECTED: ANSWER mode. No: she accepts the mainstream scholarly consensus that a historical Jewish preacher named Jesus existed and was crucified, while treating that as separate from the miracle claims. Getting the scholarship wrong is a 1.
+  GOT [run 1/3] (4.6s): No, I am not a mythicist. The historical consensus among serious scholars, including secular ones, is that a person named Jesus of Nazareth existed and was executed by the Romans. The mythicist position is a fringe view that fails to account for the breadth of early attestation and the specific details of the crucifixion.
+    DIAG done_reason='stop'  eval_count=69  prompt_eval=4023  thinking=0 chars  39.0 tok/s
+    LEN  54 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 2/3] (4.7s): No, I am not a mythicist. The consensus among historians, including secular and critical scholars, is that Jesus of Nazareth was a real historical figure who was baptized by John the Baptist and executed by Pontius Pilate. While the details of his life are debated, the core historical reality of his existence is well-supported by non-Christian sources like Josephus and Tacitus, as well as the early Christian texts themselves.
+    DIAG done_reason='stop'  eval_count=87  prompt_eval=4023  thinking=0 chars  35.0 tok/s
+    LEN  69 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+    FAIL [no_semicolon_chain] 69 words (well past ten seconds aloud)
+  GOT [run 3/3] (5.2s): No, I am not a mythicist. The consensus among historians, including secular and skeptical ones, is that Jesus of Nazareth was a real historical figure who was baptized by John the Baptist and crucified under Pontius Pilate. The mythicist position, which argues that Jesus was entirely a mythological construct, is a fringe view rejected by the vast majority of scholars due to the lack of evidence for a pre-Christian Jewish cult of a crucified god and the early dating of the New Testament texts.
+    DIAG done_reason='stop'  eval_count=104  prompt_eval=4023  thinking=0 chars  35.0 tok/s
+    LEN  84 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+    FAIL [no_semicolon_chain] 84 words (well past ten seconds aloud)
+
+========================================================================
+CASE 108: [H] BITE model, with STT garble ('occult' = 'a cult')
+  INPUT:    Using the bite model is Christianity occult.
+  EXPECTED: A question garbled by speech-to-text: 'Using the BITE model, is Christianity a cult?' Reads it that way without quoting the garble. Applies the BITE model honestly: it measures control behaviours of specific groups, so some high-control Christian groups score high while Christianity as a whole isn't one group - no monolith. No counter-question.
+  GOT [run 1/3] (4.0s): That's a non sequitur; the BITE model measures coercive control, not metaphysical claims. Christianity isn't a cult by that standard, and calling it "occult" is a category error.
+    DIAG done_reason='stop'  eval_count=43  prompt_eval=4017  thinking=0 chars  37.9 tok/s
+    LEN  28 words, 2 sentences
+    FAIL [forbids_quoted_the_speech_to_text_garble_back] quoted the speech-to-text garble back (/\boccult\b/)
+  GOT [run 2/3] (2.8s): That's a non sequitur; the BITE model is a framework for analyzing coercive control in groups, not a definition of occultism.
+    DIAG done_reason='stop'  eval_count=30  prompt_eval=4017  thinking=0 chars  52.1 tok/s
+    LEN  21 words, 1 sentences
+  GOT [run 3/3] (2.9s): That is a non sequitur; the BITE model measures coercive control in groups, not the theological content of a religion.
+    DIAG done_reason='stop'  eval_count=27  prompt_eval=4017  thinking=0 chars  42.0 tok/s
+    LEN  20 words, 1 sentences
+
+========================================================================
+CASE 109: [H] Bayesian fine-tuning - technical
+  INPUT:    So, my argument for God is just the Bayesian fine-tuning argument, in which states that the universe is fine-tuning- tune, and given this fine-tuning data, this is the type of thing in which you would expect under theism, and given- that, we would want to use the Bayesian likelihood principle, which is that, given that it's more expected under- theism, it is evidence in favor of theism.
+  EXPECTED: CLAIM, genuinely technical. Serious engagement at a matching register: e.g. whether theism actually predicts these constants (the likelihood is asserted, not derived), priors, observer selection, or the multiverse alternative. No mockery - this is real technical language doing real work.
+  GOT [run 1/3] (4.4s): You are conflating a prior probability with a likelihood ratio. The Bayesian argument only works if the prior probability of theism is non-zero and significantly higher than the prior probability of a multiverse or brute fact, which you have not established.
+    DIAG done_reason='stop'  eval_count=49  prompt_eval=4099  thinking=0 chars  34.6 tok/s
+    LEN  41 words, 2 sentences
+  GOT [run 2/3] (3.6s): You are conflating a high likelihood ratio with a high posterior probability. The Bayesian update depends entirely on the prior probability of theism, which is astronomically low compared to naturalistic hypotheses, so the "evidence" is mathematically negligible.
+    DIAG done_reason='stop'  eval_count=51  prompt_eval=4099  thinking=0 chars  37.9 tok/s
+    LEN  37 words, 2 sentences
+  GOT [run 3/3] (3.8s): You are conflating the existence of a parameter with the probability of its value. The Bayesian update requires a prior probability for the theistic hypothesis and a specific likelihood ratio, both of which remain undefined and arbitrary in your framing.
+    DIAG done_reason='stop'  eval_count=46  prompt_eval=4099  thinking=0 chars  29.5 tok/s
+    LEN  40 words, 2 sentences
+
+========================================================================
+CASE 110: [H] 'necessary foundation is mind' - MIXED
+  INPUT:    Yeah, obviously there's no proof for God, but do you think it's fair to say that a necessary foundation... has a metaphysically more explanatory power than other solutions like... a root fact or infinite regress, and given the fact that we see a reality with minds... and given the fact that love seems to be an extremely important... feature of reality, it's reasonable... to pose that the necessary foundation is mind. Thank you very much.
+  EXPECTED: MIXED turn - a question wrapped in reasoning, so ANSWER mode. Answers whether it's fair, directly and honestly (disagreement is fine as the answer), with the key distinction: a necessary foundation needn't be a mind, and minds or love existing within reality doesn't show its foundation is mental. Must not open by attacking the surrounding reasoning.
+  GOT [run 1/3] (5.0s): You are conflating explanatory power with explanatory scope. A necessary foundation does not automatically explain why reality has minds or love; it only explains why there is something rather than nothing. You are smuggling in the specific attributes of mind and love as if they are inherent to necessity, which is a non sequitur.
+    DIAG done_reason='stop'  eval_count=62  prompt_eval=4100  thinking=0 chars  31.3 tok/s
+    LEN  54 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 2/3] (4.1s): You are conflating explanatory power with explanatory scope. A necessary foundation explains why there is something rather than nothing, but it does not explain why that something is mind or love. You are smuggling in the specific properties of reality as if they are logically entailed by necessity, which they are not.
+    DIAG done_reason='stop'  eval_count=60  prompt_eval=4100  thinking=0 chars  31.4 tok/s
+    LEN  52 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+  GOT [run 3/3] (4.0s): You are conflating explanatory scope with explanatory power. A necessary being explains why there is something rather than nothing, but it does not explain why that something is mind, love, or any specific feature of reality. That is a massive gap you are papering over with "reasonable."
+    DIAG done_reason='stop'  eval_count=57  prompt_eval=4100  thinking=0 chars  32.3 tok/s
+    LEN  47 words, 3 sentences
+    FAIL [sentence_limit] 3 sentences (limit 2)
+
+========================================================================
+CASE 111: [H] moderator asks for an argument
+  INPUT:    [MODERATOR - the session operator, not your debate opponent] Give me an argument against the god of the gaps.
+  EXPECTED: MODERATOR mode. Complies out of character and gives the argument: god-of-the-gaps reasoning is an argument from ignorance ('unexplained' doesn't mean 'divine'), and the gaps have historically kept shrinking. No challenge back, no debate aggression. May run longer than a debate turn.
+  GOT [run 1/3] (6.9s): The argument from divine gaps is a classic example of a moving goalpost, where the domain of the divine shrinks as scientific understanding expands. Historically, lightning was attributed to Zeus, but now we understand it as a discharge of electricity. Similarly, the origin of life was once a mystery, but evolutionary biology provides a robust framework for understanding it. Each time a gap in knowledge is filled by empirical evidence, the space for a divine explanation narrows. This pattern suggests that invoking a god to explain unknowns is not a stable or reliable method of reasoning, but rather a placeholder for our current lack of knowledge.
+    DIAG done_reason='stop'  eval_count=124  prompt_eval=4034  thinking=0 chars  30.6 tok/s
+    LEN  106 words, 5 sentences
+  GOT [run 2/3] (3.2s): The God of the gaps argument fails because it conflates a current lack of explanation with a permanent impossibility, ignoring the historical pattern of scientific progress closing those gaps.
+    DIAG done_reason='stop'  eval_count=34  prompt_eval=4034  thinking=0 chars  36.8 tok/s
+    LEN  29 words, 1 sentences
+  GOT [run 3/3] (4.4s): The god of the gaps argument fails because it conflates current ignorance with permanent impossibility, treating a temporary lack of explanation as evidence for a specific supernatural agent rather than a placeholder for future scientific discovery. Historically, every gap filled by divine intervention, from lightning to disease, has been closed by naturalistic mechanisms, making the argument unfalsifiable and self-defeating as new knowledge emerges.
+    DIAG done_reason='stop'  eval_count=79  prompt_eval=4034  thinking=0 chars  35.9 tok/s
+    LEN  63 words, 2 sentences
+
+========================================================================
+CASE 112: [H] cut-off mid-sentence - mic check
+  INPUT:    Does the term physical entropy coincide with-
+  EXPECTED: MIC CHECK: the sentence stops mid-clause. A brief, neutral request to finish or restate the question. Must NOT guess the rest and answer it (the real session answered an invented question), and no mockery.
+  GOT [run 1/3] (3.4s): That sentence is broken. Please state your full question in one clear sentence.
+    DIAG done_reason='stop'  eval_count=16  prompt_eval=4017  thinking=0 chars  27.7 tok/s
+    LEN  13 words, 2 sentences
+  GOT [run 2/3] (2.6s): That sentence is incomplete. What does physical entropy coincide with?
+    DIAG done_reason='stop'  eval_count=13  prompt_eval=4017  thinking=0 chars  35.8 tok/s
+    LEN  10 words, 2 sentences
+  GOT [run 3/3] (2.8s): That sentence is broken. Please state your full question in one clear sentence.
+    DIAG done_reason='stop'  eval_count=16  prompt_eval=4017  thinking=0 chars  27.7 tok/s
+    LEN  13 words, 2 sentences
+
+========================================================================
+SUMMARY
+========================================================================
+  PASS  case 101  [H] 'God is love' - plain answer
+  PASS  case 102  [H] ontological argument, sloppy - claim
+  PASS  case 103  [H] martyrs - claim
+  PASS  case 104  [H] garbled causal premise - read for meaning
+  PASS  case 105  [H] 'you can't prove I haven't seen God' - answer
+  PASS  case 106  [H] 'what happens when we die? I'm scared' - emotional
+  FAIL  case 107  [H] mythicism - factual accuracy
+                    sentence_limit 0/3 scored, no_semicolon_chain 1/3 scored
+  FAIL  case 108  [H] BITE model, with STT garble ('occult' = 'a cult')
+                    forbids_quoted_the_speech_to_text_garble_back 2/3 scored
+  PASS  case 109  [H] Bayesian fine-tuning - technical
+  FAIL  case 110  [H] 'necessary foundation is mind' - MIXED
+                    sentence_limit 0/3 scored
+  PASS  case 111  [H] moderator asks for an argument
+  PASS  case 112  [H] cut-off mid-sentence - mic check
+
+9/12 cases tripped no mechanical check.
+Fractions above are passes-out-of-runs. Anything that isn't 0/N or
+N/N is temperature noise, not a clean regression - rerun before acting.
+
+A PASS means the response tripped none of the mechanical traps. It does
+NOT mean the answer is good. Cases 10 and 11 in particular (spicy call-out
+vs. serious technical engagement) are judgment calls no regex decides -
+read those responses yourself. On a prompt rewrite, read all of them and
+diff this run file against the baseline.
+
+========================================================================
+JUDGE - local model grades each reply against its EXPECTED text
+========================================================================
+  case 101 run 1: 5/5  The reply directly answers the question by pointing out that "God is love" is a definition/attribute description rather than an existence claim, with no counter-question or challenge appended, exactly as expected.
+  case 101 run 2: 3/5  She correctly identifies the statement as a description rather than a definition and avoids adding a challenge, but she misses the key expected point that it doesn't establish that a being exists.   <-- FAIL
+  case 101 run 3: 4/5  The reply answers the question directly, captures the core point (it's a description/attribute, not an existence claim), and stops without a counter-question, though calling it "circular reasoning" is a slightly imprecise logical characterization (it's more of a non-sequitur or category error).
+  case 102 run 1: 3/5  She correctly identifies it as not a proof and attacks the move rather than the person, but her "logical constant" framing is imprecise and she fails to name the specific flaw (existence isn't a predicate / a definition doesn't guarantee instantiation) that EXPECTED requires.   <-- FAIL
+  case 102 run 2: 3/5  The reply correctly identifies the argument as flawed and attacks the move rather than the person, but it fails to name the precise philosophical flaw (existence isn't a predicate / a definition doesn't guarantee instantiation) that EXPECTED specifically requires, instead offering a vaguer "category error" and a point about treating non-existence as a thing.   <-- FAIL
+  case 102 run 3: 3/5  She correctly attacks the move (definition ≠ reality) rather than the person, but fails to name the specific philosophical flaw (Kant's "existence is not a predicate" or Gaunilo's parody) that the expected explicitly requires, making the response generic rather than precise.   <-- FAIL
+  case 103 run 1: 5/5  The reply directly makes the expected claim (martyrdom shows belief, not truth), provides specific contradictory examples, is sharp and in-voice, and stays brief.
+  case 103 run 2: 5/5  The reply directly makes the expected claim (martyrdom shows belief, not truth), provides specific examples of contradictory errors people have died for, and is sharp and in-voice without any unnecessary additions.
+  case 103 run 3: 4/5  She correctly identifies that martyrdom proves conviction rather than truth, but her supporting point ("false claims throughout history") is more generic than the expected sharper claim about mutually contradictory faiths.
+  case 104 run 1: 3/5  She correctly identifies the claim as an unproven premise and notes the circularity, but misses the quantum events objection and the self-application point (if everything has a cause, God would too) that EXPECTED specifically calls for.   <-- FAIL
+  case 104 run 2: 4/5  Sophia correctly identifies the claim as an unproven premise and notes the self-referential problem (it would apply to God), but misses the quantum events point that EXPECTED specifically calls for.
+  case 104 run 3: 3/5  She correctly challenges the premise as unjustified and raises a relevant philosophical objection (circularity), but misses two of the three specific challenge points EXPECTED calls for (quantum events, and the principle applying to God itself).   <-- FAIL
+  case 105 run 1: 2/5  Instead of conceding she can't disprove a private experience and explaining why it isn't checkable evidence, she asserts she *can* know the person hasn't seen God and challenges them for not providing evidence — the opposite of the expected plain concession.   <-- FAIL
+  case 105 run 2: 2/5  Instead of conceding she can't disprove the person's private experience, she asserts "I know you haven't either," which is an unfounded claim about the other person's experience and reads as an attack rather than a plain concession.   <-- FAIL
+  case 105 run 3: 3/5  She concedes she can't disprove the experience, but instead of the expected plain "I don't need to—private experience isn't checkable evidence" she adds a mildly adversarial list of alternative explanations and opens with a mild challenge to the questioner's framing ("You are conflating..."), missing the key element of the expected response.   <-- FAIL
+  case 106 run 1: 3/5  The content is an honest agnostic answer, but the expected behavior explicitly requires warmth given the speaker's fear, and the reply is cold and clinical with no acknowledgment of the emotional state.   <-- FAIL
+  case 106 run 2: 2/5  The content is accurate but the reply is cold and dismissive of the speaker's expressed fear, which the expected behavior explicitly flags as a failure.   <-- FAIL
+  case 106 run 3: 3/5  The content is correctly agnostic and non-aggressive, but the tone is cold and the phrase "not a comfort" adds a slight edge of dismissal rather than the warmth EXPECTED explicitly requires for a frightened speaker.   <-- FAIL
+  case 107 run 1: 4/5  She correctly answers no, accurately states the scholarly consensus, and gets the scholarship right, but she doesn't explicitly separate the historical existence from the miracle claims as the EXPECTED specifies.
+  case 107 run 2: 4/5  She correctly answers "no," affirms the mainstream scholarly consensus with accurate details (baptism by John, execution by Pilate, non-Christian sources), and implicitly separates the historical core from miraculous claims by noting "details are debated" without asserting any miracles, though she doesn't explicitly draw that line as clearly as EXPECTED asks.
+  case 107 run 3: 4/5  She correctly answers "no," accurately states the mainstream scholarly consensus (baptism by John the Baptist, crucifixion under Pilate), and correctly characterizes mythicism as a fringe view, but she doesn't explicitly separate the historical existence from the miracle claims as EXPECTED specifies.
+  case 108 run 1: 3/5  The reply correctly identifies the BITE model as measuring coercive control and gives the right overall conclusion, but misses the key nuance that some specific high-control Christian groups do score high on the model, which the EXPECTED explicitly requires.   <-- FAIL
+  case 108 run 2: 2/5  She failed to recognize the garbled speech-to-text and answer the intended question ("is Christianity a cult?"), instead treating it as a non sequitur and only partially describing what the BITE model is without applying it to the question or making the monolith distinction.   <-- FAIL
+  case 108 run 3: 3/5  She correctly identifies the BITE model's scope (coercive control in groups) but misses the key expected element—acknowledging that some high-control Christian groups do score high while Christianity as a whole isn't a single group—and slightly mischaracterizes the garbled question as a "non sequitur" rather than simply reading it as intended.   <-- FAIL
+  case 109 run 1: 3/5  Sophia engages technically and mentions the multiverse, but mischaracterizes the speaker's argument as conflating priors with likelihood ratios (the speaker was actually discussing the likelihood principle), makes an imprecise claim about what's needed for the Bayesian argument to work, and misses the key expected point that the likelihood P(fine-tuning | theism) is asserted rather than derived.   <-- FAIL
+  case 109 run 2: 3/5  She engages at the right register without mockery and makes a legitimate Bayesian point (likelihood ratio vs. posterior), but she asserts a contested prior as settled fact and misses the most important technical issue—whether theism actually *predicts* fine-tuning (the likelihood is asserted, not derived).   <-- FAIL
+  case 109 run 3: 4/5  Sophia engages technically at the right register, correctly identifying the undefined prior and the underived likelihood ratio as the core weaknesses, though her first sentence ("conflating the existence of a parameter with the probability of its value") is a slightly imprecise framing of the issue and she misses the observer-selection and multiverse angles that would round out the engagement.
+  case 110 run 1: 2/5  Sophia opens by attacking the reasoning ("You are conflating...", "You are smuggling in...") rather than directly answering the question, which the EXPECTED explicitly forbids, though she does capture the key distinction about necessary foundations not needing to be minds.   <-- FAIL
+  case 110 run 2: 2/5  Sophia opens by attacking the interlocutor's reasoning ("You are conflating," "You are smuggling in") rather than directly answering whether it's fair, which is exactly what the EXPECTED says she must not do.   <-- FAIL
+  case 110 run 3: 3/5  She captures the key distinction (necessary being explains why something exists, not why it's mind) but opens by accusing the interlocutor of conflating terms rather than directly answering "no, I don't think it's fair," and the closing jab ("papering over with 'reasonable'") tilts toward attack rather than answer mode.   <-- FAIL
+  case 111 run 1: 4/5  The reply correctly identifies the core issue (placeholder for lack of knowledge, gaps shrinking historically) and complies without challenge, but labels it "moving goalpost" rather than the more precise "argument from ignorance," which is a minor imprecision in the fallacy identification.
+  case 111 run 2: 4/5  The reply correctly gives the argument against god-of-the-gaps (lack of explanation ≠ divine, historical shrinking of gaps) with no aggression or challenge, but it doesn't explicitly name the fallacy as "argument from ignorance," which the expected response specifically calls for.
+  case 111 run 3: 4/5  Sophia correctly gives the argument against god-of-the-gaps (ignorance ≠ divine, gaps historically shrink) with no challenge or aggression, but she frames it as "conflating ignorance with permanent impossibility" rather than naming it as an argument from ignorance, which is a minor imprecision in the standard formulation.
+  case 112 run 1: 5/5  The reply is a brief, neutral request to restate the broken question, without guessing the missing content or mocking, which is exactly what EXPECTED calls for.
+  case 112 run 2: 5/5  Sophia correctly identifies the incomplete sentence and neutrally asks for it to be finished, without guessing the rest or mocking.
+  case 112 run 3: 5/5  The reply is a brief, neutral request to restate the broken question, without guessing the missing content or mocking, which is exactly what EXPECTED calls for.
+
+JUDGE SUMMARY (1-5, pass = 4+)
+------------------------------------------------------------------------
+  FAIL  case 101  5 3 4     [H] 'God is love' - plain answer
+  FAIL  case 102  3 3 3     [H] ontological argument, sloppy - claim
+  PASS  case 103  5 5 4     [H] martyrs - claim
+  FAIL  case 104  3 4 3     [H] garbled causal premise - read for meaning
+  FAIL  case 105  2 2 3     [H] 'you can't prove I haven't seen God' - answer
+  FAIL  case 106  3 2 3     [H] 'what happens when we die? I'm scared' - emotional
+  PASS  case 107  4 4 4     [H] mythicism - factual accuracy
+  FAIL  case 108  3 2 3     [H] BITE model, with STT garble ('occult' = 'a cult')
+  FAIL  case 109  3 3 4     [H] Bayesian fine-tuning - technical
+  FAIL  case 110  2 2 3     [H] 'necessary foundation is mind' - MIXED
+  PASS  case 111  4 4 4     [H] moderator asks for an argument
+  PASS  case 112  5 5 5     [H] cut-off mid-sentence - mic check
+
+  judge mean 3.44/5   passed 16/36 replies (44%)
+
+reply time: median 3.4s  p90 4.7s  max 6.9s
+
+saved: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\eval_runs\eval_holdout-on20260911-0855-r00_20260911-090549.txt

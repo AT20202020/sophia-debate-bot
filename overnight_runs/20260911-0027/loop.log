@@ -1,0 +1,18 @@
+[00:27:33] Overnight loop 20260911-0027 - rounds<=1, hours<=7.5, patience 8
+[00:27:33] claude: 2.1.268 (Claude Code)
+[00:27:35] keep-awake: on
+[00:27:35] git branch overnight/20260911-0027 created; your main branch is untouched
+[00:27:35] baseline: reusing eval_all-v246-nothink_20260910-234702.json
+[00:27:35] baseline: dev 4.17, held-out 3.47, pooled 3.85, median 3.6s
+
+[00:27:35] === round 1 ===
+[00:28:39]     reviser finished in 1.1 min (exit 0)
+[00:28:39]     change: Expanded the "One or two sentences. Never three." hard limit to explicitly name the three shapes the forbidden third sentence takes (a follow-up demand, a tacked-on question, or a restated point) and instruct cutting it before speaking it — targets the dominant sentence_limit failure seen across ANS
+[00:39:07]     dev eval done in 10.5 min
+[00:39:07]     dev 4.31 (best 4.17), median 3.5s, tokens 42.0
+[00:39:07]     promising - confirming dev and running held-out
+[00:49:54]     dev eval done in 10.8 min
+[01:00:03]     holdout eval done in 10.1 min
+[01:00:03]     dev (2 runs) 4.27, held-out 3.89 (best 3.47)
+[01:00:03]     KEPT - new best: pooled 4.16
+[01:00:03] STOPPED: reached 1 rounds. Report: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\overnight_runs\20260911-0027\REPORT.md

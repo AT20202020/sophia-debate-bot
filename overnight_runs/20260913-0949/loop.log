@@ -1,0 +1,9 @@
+[09:49:50] Overnight loop 20260913-0949 - rounds<=30, hours<=7.5, patience 8
+[09:49:50] claude: 2.1.268 (Claude Code)
+[09:49:50] keep-awake: on
+[09:49:50] git branch overnight/20260913-0949 created; your main branch is untouched
+[09:49:50] baseline: reusing eval_all-v2.49-baseline_20260913-000412.json
+[09:49:50] baseline: dev 4.04, held-out 3.46, pooled 3.79, median 1.3s
+
+[09:49:50] === round 1 ===
+[09:49:50] STOPPED: crashed: NameError("name 'args' is not defined"). Report: C:\Users\dobe2\Desktop\Ai Chat Bot 2\sophia-debate-bot\overnight_runs\20260913-0949\REPORT.md

@@ -16,6 +16,19 @@ set "REQ_FILE=%~dp0requirements.txt"
 set "REQ_HASH_FILE=%~dp0.requirements.sha256"
 set "MODEL_NAME=qwen3.8:27b"
 
+REM --- Choose how to run her ------------------------------------------------
+REM Asked first so you can pick and walk away while the checks below run.
+REM 1 = classic push-to-talk console. 2 = hands-free window (sophia_handsfree.py).
+set "SOPHIA_MODE="
+echo.
+echo How do you want to run Sophia?
+echo   1 = Push-to-talk  (classic: Enter to talk, Enter to stop)
+echo   2 = Hands-free    (she listens on her own - Start / Pause / End window)
+echo.
+choice /c 12 /n /m "Press 1 or 2: "
+if errorlevel 2 set "SOPHIA_MODE=--handsfree"
+echo.
+
 REM whisper.cpp GPU transcription server - optional, lives in the
 REM whisper-server subfolder if you've set it up (gitignored - it's
 REM large, machine-specific binaries, not code; see the README's
@@ -212,7 +225,7 @@ set "OLLAMA_KV_CACHE_TYPE=q8_0"
 
 REM --- Make sure Ollama is running -----------------------------------------
 echo Checking if Ollama is running...
-curl -s -o NUL -w "%%{http_code}" http://localhost:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
+curl -s -o NUL -w "%%{http_code}" http://127.0.0.1:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
 set /p OLLAMA_STATUS=<"%TEMP%\sophia_ollama_check.txt"
 
 if "!OLLAMA_STATUS!"=="200" (
@@ -225,7 +238,7 @@ if "!OLLAMA_STATUS!"=="200" (
     set OLLAMA_READY=0
     for /L %%i in (1,1,15) do (
         if "!OLLAMA_READY!"=="0" (
-            curl -s -o NUL -w "%%{http_code}" http://localhost:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
+            curl -s -o NUL -w "%%{http_code}" http://127.0.0.1:11434/api/tags > "%TEMP%\sophia_ollama_check.txt" 2>NUL
             set /p OLLAMA_STATUS=<"%TEMP%\sophia_ollama_check.txt"
             if "!OLLAMA_STATUS!"=="200" (
                 set OLLAMA_READY=1
@@ -316,7 +329,7 @@ REM --- Launch Sophia ---------------------------------------------------------
 echo.
 echo Launching Sophia...
 echo.
-"%VENV_PYTHON%" "%SCRIPT%"
+"%VENV_PYTHON%" "%SCRIPT%" %SOPHIA_MODE%
 
 echo.
 echo Sophia has exited.

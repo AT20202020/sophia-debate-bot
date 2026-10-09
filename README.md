@@ -3,19 +3,21 @@
 Sophia is a fully local, voice-to-voice philosophy debate opponent. She argues from an agnostic-atheist position with deep comparative-religion knowledge, names fallacies precisely, escalates her technical vocabulary to match (and outdo) her opponent, and remembers past debates. Everything runs on your own machine — no cloud APIs, no data leaves your PC.
 
 ```
-mic (push-to-talk) → faster-whisper (STT) → Ollama (LLM, streaming)
+mic (push-to-talk or hands-free) → faster-whisper (STT) → Ollama (LLM, streaming)
                    → Kokoro (TTS, sentence-by-sentence) → speakers
 ```
 
-Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Typical response latency is ~2.6s from end of speech to first audio on an RX 7900 XTX running qwen3.8:27b.
+Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Measured on an RX 7900 XTX running qwen3.8:27b: first token ~0.9s after the request, ~4.5s from the end of your speech to hearing her (most of that is transcription).
 
 ## Features
 
-- **Push-to-talk voice loop** — Enter to talk, Enter to stop. Deliberate design: after each response you can discuss with people in the room without the bot reacting. An experimental voice-activated mode with barge-in interruption exists behind a flag (`VOICE_ACTIVATED`).
-- **Live rolling transcription** — speech is transcribed in ~2.5s chunks *while you're still talking*, so the wait after you stop doesn't grow with how long you spoke.
+- **Two ways to run her, chosen at launch** — `Start Sophia.bat` asks `1` or `2`:
+  - **Push-to-talk** (classic console) — Enter to talk, Enter to stop. After each response you can talk with people in the room without her reacting. All typed commands below work here.
+  - **Hands-free** — a small window with Start / Pause / End. She greets the room, then listens on her own and answers when you stop talking. See [Hands-free mode](#hands-free-mode).
+- **Live rolling transcription** — speech is transcribed in ~6s chunks *while you're still talking*, so the wait after you stop doesn't grow with how long you spoke.
 - **A tuned debate persona** — surgeon-not-brawler precision, honest evaluation when you ask "is my argument valid?", plain answers to plain questions, impasse diagnosis instead of repetition, verbatim premise quoting before attack, a counter for jargon-posturing opponents, and deliberate vocabulary escalation in philosophical exchanges.
 - **Cross-session memory** — she summarizes each debate and folds recent summaries into her context at launch, so she can reference what you argued last time.
-- **Typed commands** at the talk prompt:
+- **Typed commands** at the push-to-talk prompt:
   - `new` — fresh opponent, context cleared (saves a memory summary first)
   - `deep` — toggle thinking mode: she reasons before answering (slower, deeper)
   - `mod` — speak to her as **moderator** rather than opponent: brief her ("your opponent is a Catholic priest", "ease off the mockery"), correct a mistranscription, or ask her something out of character. Briefings are applied, never argued with. `mod <text>` sends inline.
@@ -23,6 +25,45 @@ Speech starts playing while the LLM is still generating: tokens stream in, compl
   - `steelman` — she rebuilds the strongest version of your argument, then attacks *that*
 - **Structured JSONL logging** — full transcripts plus per-turn diagnostics (time-to-first-token, time-to-first-audio, Ollama eval counters, model-reload detection, transcription chunk timing) for later analysis.
 - **Optional GPU transcription** — auto-detects a local [whisper.cpp](https://github.com/ggml-org/whisper.cpp) server built with Vulkan support (works on AMD/NVIDIA/Intel GPUs with Vulkan drivers, not just one vendor) and falls back to CPU transparently. `Start Sophia.bat` auto-starts it for you if it's set up - see below.
+
+## Hands-free mode
+
+Pick `2` when `Start Sophia.bat` asks. A small window opens (the console stays open behind it with the details):
+
+| Control | What it does |
+|---|---|
+| **Start** | She says *"Hi, I'm Sophia. What's your claim about God?"* and starts listening. |
+| **Pause / Resume** (or **Space**) | For side conversations: she's deaf until you resume. If she's mid-sentence she stops. |
+| **End** | Saves her memory summary of the debate and clears context for the next opponent (what `new` does in push-to-talk). Closing the window does the same. |
+
+How turn-taking works:
+- **She only listens when the window says "Listening"** (or "Hearing you..." once you've started). From the moment your turn ends — while she transcribes, thinks, and speaks, plus half a second after — she hears nothing. The window says *"not listening"* the whole time.
+- **She's never interrupted.** Talking over her isn't heard; wait for "Listening" and say it again.
+- Your turn ends after **1.2s of quiet** (`END_SILENCE_MS` in `sophia_handsfree.py`). Raise it if she jumps in while you pause to think.
+- Coughs, "um", "yeah" and Whisper's phantom phrases are ignored instead of answered.
+- The typed commands (`mod`, `verdict`, `steelman`, `deep`) are push-to-talk only for now.
+
+## System requirements
+
+Tested on Windows with an AMD RX 7900 XTX (24GB) and a ZOOM P4 USB audio interface. The launcher is Windows-only; the Python runs elsewhere with manual setup.
+
+**Both modes — minimum:**
+
+| | Minimum | Notes |
+|---|---|---|
+| **GPU** | 24GB VRAM for the default `qwen3.8:27b` (~18GB weights + 16k-token context) | Smaller GPUs: pull a smaller model and change the model strings in `debate_voice.py`. AMD (ROCm) and NVIDIA both work through Ollama. |
+| **CPU** | A modern multi-core desktop CPU | Speech-to-text (`small.en`) and text-to-speech run on the CPU. Each transcription takes ~1.5–3s on the test machine. |
+| **Disk** | ~20GB free | The LLM plus ~570MB of Whisper/Kokoro models (downloaded on first run). |
+| **OS / software** | Windows 10/11, Python 3.10–3.12, Ollama, espeak-ng | See [Prerequisites](#prerequisites). |
+| **Audio** | A microphone and headphones or speakers | |
+
+**Hands-free mode — additionally:**
+
+- **A dedicated microphone close to whoever's speaking.** Speech is detected by volume against the room's noise floor, so a laptop mic across a noisy room will trigger on background talk. Use Pause for side conversations.
+- **Nothing may feed the computer's own audio back into the mic input.** If your audio interface or Windows routes playback into the recording signal, she hears herself and answers her own words. Turn off any loopback or "mix" feature. On a **ZOOM PodTrak P4**: *Menu → Settings → USB Mix Minus → On*. In Windows, make sure "Listen to this device" is off and Stereo Mix isn't the input.
+- **Headphones recommended.** She doesn't listen while she talks, so speakers work, but headphones keep the room quieter for detection.
+- **Tkinter** for the window. It ships with the standard python.org installer; if it's missing, re-run the installer, choose *Modify*, and tick *tcl/tk and IDLE*.
+- *Optional:* `pip install webrtcvad-wheels` for better speech detection in noisy rooms (detection works without it).
 
 ## Prerequisites
 

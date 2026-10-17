@@ -7,7 +7,13 @@ mic (push-to-talk or hands-free) → faster-whisper (STT) → Ollama (LLM, strea
                    → Kokoro (TTS, sentence-by-sentence) → speakers
 ```
 
-Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Measured on an RX 7900 XTX running qwen3.8:27b: first token ~0.9s after the request, ~4.5s from the end of your speech to hearing her (most of that is transcription).
+Speech starts playing while the LLM is still generating: tokens stream in, complete sentences are synthesized and queued immediately, and synthesis of the next sentence overlaps playback of the current one. Measured on an RX 7900 XTX running a 27B Qwen model: first token ~0.9s after the request, ~4.5s from the end of your speech to hearing her (most of that is transcription).
+
+## The model
+
+Sophia runs **`qwen3.8-abliterated:27b`**: [huihui-ai's abliterated Qwen3.8 27B](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF) (Q4_K_M) wrapped in Ollama's stock qwen3.8 chat template. "Abliterated" means the model's built-in refusal behaviour has been removed; Sophia's own rules in `debate_voice.py` still decide what she says. In a 46-question, two-pass comparison against stock `qwen3.8:27b` (one fixed judge), it scored higher (4.49 vs 4.27 of 5), answered faster (2.8s vs 3.1s median) and stopped refusing - stock Qwen answered "I cannot provide information on that topic" when asked about Tiananmen Square.
+
+You don't download it as-is: `Start Sophia.bat` builds it on first run with `make_abliterated_model.py` (downloads the ~17 GB weights, then `ollama create`). Don't point Sophia at the raw Hugging Face GGUF - its own template returns an empty reply whenever a system note follows your turn, which Sophia does on every direct question. To use stock Qwen instead, change `MODEL_NAME` in `Start Sophia.bat` and the four `"model"` lines in `debate_voice.py` to `qwen3.8:27b`.
 
 ## Features
 
@@ -51,9 +57,9 @@ Tested on Windows with an AMD RX 7900 XTX (24GB) and a ZOOM P4 USB audio interfa
 
 | | Minimum | Notes |
 |---|---|---|
-| **GPU** | 24GB VRAM for the default `qwen3.8:27b` (~18GB weights + 16k-token context) | Smaller GPUs: pull a smaller model and change the model strings in `debate_voice.py`. AMD (ROCm) and NVIDIA both work through Ollama. |
+| **GPU** | 24GB VRAM for the default 27B model (~17GB weights + 16k-token context) | Smaller GPUs: pull a smaller model and change the model strings in `debate_voice.py`. AMD (ROCm) and NVIDIA both work through Ollama. |
 | **CPU** | A modern multi-core desktop CPU | Speech-to-text (`small.en`) and text-to-speech run on the CPU. Each transcription takes ~1.5–3s on the test machine. |
-| **Disk** | ~20GB free | The LLM plus ~570MB of Whisper/Kokoro models (downloaded on first run). |
+| **Disk** | ~25GB free | The LLM plus ~570MB of Whisper/Kokoro models (downloaded on first run). |
 | **OS / software** | Windows 10/11, Python 3.10–3.12, Ollama, espeak-ng | See [Prerequisites](#prerequisites). |
 | **Audio** | A microphone and headphones or speakers | |
 
@@ -74,7 +80,7 @@ Tested on Windows with an AMD RX 7900 XTX (24GB) and a ZOOM P4 USB audio interfa
 *On Windows, `Start Sophia.bat` checks 1-3 itself and either fixes them or tells you what to do - this list is for manual setup or other platforms.*
 
 1. **Python ≥3.10 and <3.13** — this is a hard requirement of the `kokoro` package, not a suggestion; 3.13 will fail to install it. 3.12 is what this project is tested on.
-2. **[Ollama](https://ollama.com)** installed and able to run, with a model pulled (default: `qwen3.8:27b`).
+2. **[Ollama](https://ollama.com)** installed and able to run (a recent version - the model uses Ollama's qwen3.8 renderer). The model itself is built by `make_abliterated_model.py` - see [The model](#the-model).
 3. **[espeak-ng](https://github.com/espeak-ng/espeak-ng/releases)** — required by Kokoro for phonemization of out-of-dictionary words. On Windows: download the latest `.msi` from the releases page and run it. On Debian/Ubuntu: `sudo apt install espeak-ng`.
 4. **Linux only:** PortAudio for the mic/speaker streams — `sudo apt install libportaudio2`. (Windows wheels bundle it.)
 
@@ -87,7 +93,7 @@ Tested on Windows with an AMD RX 7900 XTX (24GB) and a ZOOM P4 USB audio interfa
 
 ### Quick start (Windows)
 
-Just run `Start Sophia.bat`. It's self-installing: it finds a compatible Python (3.10-3.12), creates the `sophia-env` venv, installs `requirements.txt` into it, checks that Ollama is installed (offering to install it via `winget` if not) and running, pulls `qwen3.8:27b` if you don't have it yet, and warns - without blocking - if `espeak-ng` is missing. Every check either fixes itself or tells you exactly what's missing and where to get it. First run takes a while (Python packages, then a large model pull); every run after that is fast.
+Just run `Start Sophia.bat`. It's self-installing: it finds a compatible Python (3.10-3.12), creates the `sophia-env` venv, installs `requirements.txt` into it, checks that Ollama is installed (offering to install it via `winget` if not) and running, builds Sophia's model if you don't have it yet (see [The model](#the-model)), and warns - without blocking - if `espeak-ng` is missing. Every check either fixes itself or tells you exactly what's missing and where to get it. First run takes a while (Python packages, then a large model pull); every run after that is fast.
 
 ### Manual setup (any OS, or if you want full control)
 
@@ -99,8 +105,8 @@ py -3.12 -m venv sophia-env
 #    PowerShell execution-policy issues with activation scripts)
 .\sophia-env\Scripts\python.exe -m pip install -r requirements.txt
 
-# 3. Pull the model
-ollama pull qwen3.8:27b
+# 3. Build the model (downloads ~17 GB the first time)
+.\sophia-env\Scripts\python.exe make_abliterated_model.py
 
 # 4. Run
 .\sophia-env\Scripts\python.exe debate_voice.py
@@ -126,6 +132,10 @@ First launch takes a while: Whisper and Kokoro load (downloading their models if
 | `sophia_eval.py` | Persona regression check — 12 canned inputs against the live system prompt with expected behaviors. Run after any prompt edit. |
 | `export_transcripts.py` | Converts the JSONL log into readable per-session markdown transcripts with mechanical-failure flags and review-notes sections. |
 | `check_ollama_cache.py` | Diagnoses Ollama KV-cache reuse and model-reload behavior across a growing conversation. |
+| `sophia_trainer.py` / `Run Training Session.bat` | One-hour self-improvement loop: a question bank (`training_cases.py`) is answered, judged and timed; Claude Code (if installed and signed in) proposes one small prompt or knowledge-card edit per round, kept only if the targeted answers improve without regressions. Never edits your live files - results go to `training_runs/`. |
+| `sophia_compare.py` / `Run Model Compare.bat` | Same questions on two models, one fixed judge, side-by-side report in `compare_runs/`. |
+| `sophia_sim.py` / `Run Simulator.bat` | Simulated debates against an AI opponent on historicity or morality, reviewed for gaps in the knowledge cards. |
+| `knowledge/` | Topic knowledge cards (historicity of Jesus, morality) injected when a topic comes up - each presents both sides. |
 | `profile_latency.py` | Isolates where response latency goes — fixed per-request overhead vs prompt size vs HTTP streaming — and reports which lever would actually help. |
 
 Version history is in [CHANGELOG.md](CHANGELOG.md), including the reasoning behind each behavioral change.

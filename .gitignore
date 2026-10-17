@@ -20,3 +20,13 @@ sophia-env/
 # Backup copies made while editing files - not part of the project
 *.bak
 .requirements.sha256
+
+# Scorecard runs quote real debate turns from logs/ - same privacy as logs/.
+scorecard_runs/
+
+# Generated test output (can quote real debate turns) and local model build files
+training_runs/
+compare_runs/
+sim_runs/
+bench_runs/
+abliterated.local.modelfile

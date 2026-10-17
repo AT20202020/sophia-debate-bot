@@ -41,6 +41,21 @@ import sounddevice as sd
 
 GREETING = "Hi, I'm Sophia. What's your claim about God?"
 
+# v2.64: appended to her system prompt for the length of a hands-free debate,
+# so she describes the setup correctly. Live 2026-10-09 she told the room "I
+# can be interrupted at any time" - true of nothing in this mode.
+HANDS_FREE_NOTE = """
+
+THIS SESSION IS HANDS-FREE
+
+You are running in hands-free mode in a room. You hear the room through a
+microphone only while their screen says "Listening". You cannot be
+interrupted: nothing said while you are thinking or speaking reaches you,
+so if someone talks over you, it is lost and they need to say it again.
+The operator can pause you for side conversations. If anyone asks how
+this works, describe exactly that - never claim you can be interrupted.
+"""
+
 # --- Tuning knobs ------------------------------------------------------------
 FRAME_MS = 20
 FRAME = int(16000 * FRAME_MS / 1000)     # 320 samples per frame at 16kHz
@@ -107,7 +122,7 @@ class HandsFree:
         """Synthesize the greeting once at launch so Start plays it instantly."""
         try:
             chunks = [a for _, _, a in self.dv.tts_pipeline(
-                self.dv.clean_for_speech(GREETING), voice="af_bella", speed=self.dv.TTS_SPEED)]
+                self.dv.clean_for_speech(GREETING), voice=self.dv.VOICE, speed=self.dv.TTS_SPEED)]
             if chunks:
                 self.greet_audio = self.dv._trim_silence(np.concatenate(chunks).astype(np.float32))
         except Exception as e:
@@ -272,8 +287,16 @@ class HandsFree:
         self.busy = True
         dv.stop_audio.clear()
         dv.turn_timing["first_audio_time"] = None
+        if HANDS_FREE_NOTE not in dv.conversation[0]["content"]:
+            dv.conversation[0]["content"] += HANDS_FREE_NOTE
         dv.conversation.append({"role": "assistant", "content": GREETING})
         dv.log_event("assistant", GREETING, greeting=True, hands_free=True)
+        # v2.64: warm the model on exactly what the first turn will send,
+        # while the greeting plays and they think. Launch priming has been
+        # unreliable (first turn 7.1s on 2026-10-09); the post-End re-prime
+        # worked every time (~0.9s first turns), and this is the same call.
+        threading.Thread(target=dv.prime_model, args=(list(dv.conversation), "start"),
+                         daemon=True).start()
         print(f"Sophia: {GREETING}")
         self.ui_q.put(("sophia", GREETING))
         if self.greet_audio is not None:

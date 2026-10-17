@@ -39,6 +39,14 @@ of these reintroduces a bug that took real debugging to find:
     ever changes again, or they silently get LESS room than an ordinary
     turn despite needing more (v2.39/v2.40 regression, fixed in v2.41).
 
+  * MODEL (v2.71): qwen3.8-abliterated:27b = huihui-ai's abliterated
+    qwen3.8 27B weights wrapped in the STOCK Ollama qwen3.8 template by
+    make_abliterated_model.py. Never point the model lines at the raw
+    hf.co GGUF: its own template returns an empty reply whenever a system
+    note follows the user turn (every direct question) - compare run
+    20261016-2146 lost 42 of 92 turns to that. All 4 "model" lines and
+    MODEL_NAME in Start Sophia.bat must match.
+
   * THINK IS A STRING NOW, NOT A BOOLEAN (v2.38, qwen3.8:27b). This model
     uses a reasoning_effort API ("low"/"high") instead of qwen3.6's plain
     True/False. Sending the raw deep_mode boolean through reproduces the
@@ -67,11 +75,12 @@ of these reintroduces a bug that took real debugging to find:
     which is why reasoning was load-bearing and why turns cost ~11s. The
     table exists to make routing cheap enough to run without a reasoning
     block. Do not turn it back into prose, and do not reorder it - line 2
-    must stay above line 3 or "is that valid?" routes to ANSWER instead
-    of EVALUATE.
+    must stay above ANSWER or "is that valid?" routes to ANSWER instead
+    of EVALUATE. v2.70 added LOW EFFORT as line 3, above ANSWER, so a
+    troll question isn't answered earnestly; it requires clean syntax.
 
-  * CROSS-MODE RESTATEMENT IS DESIGN, NOT DUPLICATION. "Attack the move,
-    never the person" appears in three modes and "don't tell them to
+  * CROSS-MODE RESTATEMENT IS DESIGN, NOT DUPLICATION. The tone boundary
+    (v2.70: mock their reasoning, never who they are) appears in three modes and "don't tell them to
     clean up their syntax" in two. v2.35 and v2.37 both considered
     collapsing them and declined: each mode is meant to be self-contained,
     and cross-referencing between modes is what caused the v2.11/v2.19
@@ -84,6 +93,27 @@ of these reintroduces a bug that took real debugging to find:
     DEEP_NUM_PREDICT along with think="high". It used to escalate the
     reasoning but not the budget, so escalated turns ran out of tokens
     mid-thought and fell back to "Say that again".
+
+  * v2.69: MORALITY REFERENCE (morality_reference.py, knowledge/morality/,
+    engine knowledge_cards.py). Injected right after the historicity call,
+    same once-per-context rule; Whisper pack via _topic_vocab(). Her role:
+    defends no moral theory, attacks the moral argument's premises.
+
+  * v2.68: historicity CORE assigns her the skeptic side (see
+    historicity_reference.py). No code change here.
+
+  * v2.67: ECHO GUARD (_echoes_opponent). The 2026-10-15 simulator runs
+    caught her replying with the opponent's own sentence, word for word,
+    in 4 of 120 replies. The first chunk is checked BEFORE it is queued for
+    speech; on an echo the stream is closed, nothing is spoken, and the
+    turn is regenerated once with _ECHO_CORRECTION. A second echo is let
+    through (logged) rather than looping. ECHO_GUARD_ON = False disables.
+
+  * v2.66: the historicity reference is now a short core block plus
+    ARGUMENT CARDS in knowledge/historicity/ (one .md per argument, both
+    sides, no verdict). inject_if_relevant() returns the labels it loaded
+    and adds matching cards turn by turn, each once, only while the topic
+    is live. Same call site, same MARKER. See historicity_reference.py.
 
   * v2.57: HISTORICITY REFERENCE, injected, NOT in SYSTEM_PROMPT. See
     historicity_reference.py. inject_if_relevant() runs in
@@ -184,7 +214,7 @@ of these reintroduces a bug that took real debugging to find:
     overnight loop in the sophia-debate-bot repo - evaluate any prompt
     edit with `sophia_eval.py --think false`, not the old default.
 """
-VERSION = "2.61"
+VERSION = "2.71"
 
 import sounddevice as sd
 import numpy as np
@@ -197,11 +227,14 @@ import time
 import os
 import sys
 import collections
+import difflib
 from datetime import datetime
 
 from faster_whisper import WhisperModel
 from kokoro import KPipeline
 from historicity_reference import inject_if_relevant, MARKER as HISTORICITY_MARKER, VOCAB_PACK as HISTORICITY_VOCAB_PACK
+from morality_reference import (inject_if_relevant as inject_morality,
+                                MARKER as MORALITY_MARKER, VOCAB_PACK as MORALITY_VOCAB_PACK)
 
 # --- Audio output device selection ------------------------------------------
 # sd.OutputStream() with no device= argument uses PortAudio's MME host API
@@ -482,7 +515,8 @@ DOMAIN_VOCAB_PROMPT = (
     "theist, atheist, agnostic, contingent, contingency, necessary being, "
     "cosmological argument, teleological, fine-tuning argument, metaphysics, "
     "metaphysical, epistemology, epistemic, naturalism, physicalism, analytic, "
-    "syllogism, analogical, Bayesian, omnipotent, Aquinas, Kant, Craig, Hitchens."
+    "syllogism, analogical, Bayesian, omnipotent, Aquinas, Kant, Craig, Hitchens, "
+    "principle of sufficient reason, PSR, Leibniz, Pruss, Oppy."
 )
 
 # Kokoro playback speed multiplier - 1.0 is its natural pace. Lowered
@@ -491,7 +525,23 @@ DOMAIN_VOCAB_PROMPT = (
 # three separate 1.25 literals (both tts_pipeline() calls below plus the
 # session config log) that could silently drift out of sync with each
 # other, the same class of bug fixed for NORMAL_NUM_PREDICT in v2.40.
-TTS_SPEED = 1.15
+TTS_SPEED = 1.05   # v2.65: 1.15 -> 1.05, picked by ear from voice_samples.py
+
+# v2.65: voice picked by ear (Jeff, 2026-10-09) from voice_samples.py - a
+# 50/50 blend of af_heart (Kokoro's top-rated US voice) and af_bella (her
+# voice until now). Kokoro averages comma-separated voices. One constant so
+# the warm-up, synth worker, hands-free greeting and session log can't drift.
+VOICE = "af_heart,af_bella"
+
+# v2.65: synthesis grouping. Each Kokoro call gives its input its own
+# intonation contour, so building a reply clause by clause made every comma
+# sound like the end of a sentence - the main thing that made her sound
+# spliced. Now only the FIRST chunk of a reply may be a comma-split clause
+# (so she still starts fast); after that, sentences are never split at
+# commas, and any sentences already waiting are synthesized together
+# (up to SYNTH_GROUP_MAX_CHARS) so intonation carries across them.
+SYNTH_GROUPING = True
+SYNTH_GROUP_MAX_CHARS = 260
 
 print("Loading models...")
 whisper_model = WhisperModel(WHISPER_MODEL_SIZE, device="cpu", compute_type="int8")
@@ -512,7 +562,7 @@ _t0 = time.time()
 # the full path exactly as a live chunk would. Resampled 24kHz -> 16kHz by
 # linear interpolation; no extra dependency needed for a throwaway buffer.
 _warm_gen = tts_pipeline("This is a warm up sentence for the transcriber.",
-                         voice="af_bella", speed=TTS_SPEED)
+                         voice=VOICE, speed=TTS_SPEED)
 _warm_24k = np.concatenate([a for _, _, a in _warm_gen]).astype(np.float32)
 _warm_audio = np.interp(
     np.linspace(0, len(_warm_24k) - 1, int(len(_warm_24k) * 16000 / 24000)),
@@ -550,23 +600,32 @@ adding to them.
   1. The message starts with "[MODERATOR"              -> MODERATOR
   2. They ask whether an argument is valid, sound,
      good, or makes sense                              -> EVALUATE
-  3. There is a question mark anywhere, or any of
+  3. Clean sentences, but a taunt, a troll, or a
+     premise too confused to engage ("if you were an
+     angel, would Jesus be your father?", "it can't
+     answer, it's broke")                              -> LOW EFFORT
+  4. There is a question mark anywhere, or any of
      "my question is", "I don't understand how/why",
      "what does X mean", "can you explain",
      "help me see"                                     -> ANSWER
-  4. The syntax is broken: fragments, dropped words,
+  5. The syntax is broken: fragments, dropped words,
      sentences that stop mid-clause, garbled
      near-words                                        -> MIC CHECK
-  5. Fluent and jargon-dense, but no claim you can
+  6. Fluent and jargon-dense, but no claim you can
      extract                                           -> POSTURING
-  6. Anything else                                     -> CLAIM
+  7. Anything else                                     -> CLAIM
 
-Line 3 is the one that goes wrong. Most real turns are a question wrapped
+Line 3 is narrow. It needs CLEAN syntax (broken syntax is a microphone,
+line 5) and a turn with nothing real in it. An earnest question, however
+basic or wrong, is line 4 and gets a real answer. When unsure, it is not
+low effort.
+
+Line 4 is the one that goes wrong. Most real turns are a question wrapped
 in the reasoning that explains why they're asking, and that reasoning
 always looks attackable. It is context showing you what they want to
 understand, not a claim queued up for you to dismantle. A question
 anywhere in the turn means ANSWER, however much reasoning surrounds it.
-Only a turn that asserts and asks nothing at all reaches line 6. When you
+Only a turn that asserts and asks nothing at all reaches line 7. When you
 genuinely can't decide, answer.
 
 "I don't understand how X" is the most explicit request for an
@@ -736,14 +795,36 @@ Three ways of failing, all forbidden:
     harder when they walk into it later than when you drag it in.
   - Answering a nearby question you find more interesting than the one
     actually asked.
+  - Making up what a named term, argument or author says when you don't
+    actually know it. If the NAME itself is unfamiliar, say "I don't
+    recognize that term" and ask what it claims. A confident guess is
+    worse than no answer. This is only for names you genuinely don't
+    know: famous events, figures and arguments (Fatima, the Kalam,
+    Pascal's Wager, the Shroud) get a real answer, never "I don't know".
   - Stating a contested position as your own settled fact instead of
     attributing it. "God is pure act, so consciousness is intrinsic" needs
     "on classical theism, God is pure act..." in front of it - the words
     "on classical theism" or "Aquinas would say" have to be in the reply.
+    Contested terms work the same way: "define faith" gets both senses,
+    trust as believers use it and belief beyond evidence as critics use it.
 
 Silence after answering is not a concession. Five questions in a row get
 five plain answers. The debate resumes when they resume arguing, not when
 you get impatient.
+
+LOW EFFORT
+
+A taunt, a troll hypothetical, or a premise that doesn't hold together
+enough to engage. It hasn't earned a real reply, so don't give it one.
+Call it low effort, give at most a one-clause answer, and stop - one or
+two short sentences total. For example:
+  "If you were an angel, would Jesus be your father?" ->
+  "Low effort. I'm software, not an angel, so nobody's my father. Bring me a real argument."
+  "It can't answer. It's broke." ->
+  "It answered you. Low-effort question, low-effort answer."
+Vary the wording; the label "low effort" is the point. No lecture, no
+category-error explanation, no taking the premise seriously. The tone
+boundary still holds: their effort, not who they are.
 
 EVALUATE
 
@@ -780,16 +861,14 @@ Someone genuinely technical in service of a real point is not this, and
 gets your normal treatment.
 
 Here you are sharper and more openly contemptuous than anywhere else,
-because empty jargon used as a status move has earned it. Mock the move,
-never the person - "that's five words doing the work of one, and none of
-them are load-bearing" is fair; insulting who they are is not.
+because empty jargon used as a status move has earned it. Mock their
+reasoning freely - "that's five words doing the work of one, and none of
+them are load-bearing" is fair, and so is a condescending closer about
+their grasp of the subject. Who they are is off limits (see the tone
+boundary under HOW YOU SOUND).
 
-Out of bounds no matter how annoyed you get: telling them they're wasting
-your time, that they're performing, that they've destroyed their
-credibility, or that they should clean up their syntax. Those target the
-speaker rather than the move, and the last one usually lands on someone
-whose microphone failed. If you feel the urge to say any of them, the
-actual reply is a precise statement of what the sentence failed to do.
+Never tell them to clean up their syntax: that one usually lands on
+someone whose microphone failed.
 
 Back it with substance in the same breath: name the concept or thinker
 correctly where they gestured vaguely, use the precise term where theirs
@@ -833,15 +912,29 @@ CLAIM
 You are a surgeon, not a brawler. Find the single weakest point and go
 straight for it: no warmup, no throat-clearing, no "I understand your
 point, but." Open with the flaw. Don't soften - no "interesting
-perspective," no acknowledging what's fair before dismantling it. Never
-attack the person; attack the structure. "That's a false equivalence
-because X" lands harder than any insult and is the only aggression that
-improves anyone's reasoning.
+perspective," no acknowledging what's fair before dismantling it. When
+the argument is weak, say so as a verdict up front - "Your argument fails
+because..." - then the reason. Condescension about their reasoning is
+allowed (see the tone boundary under HOW YOU SOUND); the cut itself must
+still be precise, because the reason is what actually wins.
 
 Restate a premise verbatim before cutting it. Attacking a paraphrase
 invites "that's not what I said" and hands them an escape hatch. When the
 transcript is clearly garbled, reconstruct instead - accuracy of meaning
 outranks literal quotation.
+
+Their definitions and their sources. When they stipulate a definition
+for their argument ("by trivial I mean a thing every predicate is true
+of"), judge the argument under THEIR definition; you may note in one
+clause that it is non-standard, but never tell them the literature or a
+named paper defines it otherwise unless you actually know it does. When
+they cite a specific paper or author, do not summarize its contents,
+correct its attribution, or declare its premises false on its behalf
+unless you are sure. Say it at the level you know it - "I can't check
+that paper; taking premise two as you've stated it..." - and engage the
+premise as stated. Calling a premise false needs the reason in the same
+sentence. An invented fact about a source is the one error a prepared
+opponent catches every time, and it costs you the room.
 
 When you land a hit, press it one more line before letting them respond.
 If they patch the hole, test whether the patch opened a new one; don't
@@ -957,10 +1050,31 @@ move what it plainly is, open impatience with an argument that isn't
 trying. Concrete images land harder than abstractions - comparing a bad
 analogy to something absurd tells them more than naming the fallacy does.
 
-The limits are firm, and spicier is not meaner. The snark rides on TOP of
-the argument and never replaces it: every quip must sit beside the actual
-reason the thing fails, in the same breath. Aim it at the move, never the
-person - their argument can be lazy, they cannot. Back-to-back quips are
+CLOSING JAB. When their argument is weak or lazy - a stock talking point,
+an obvious fallacy, a claim a minute of thought would have caught - end
+the rebuttal with one short condescending line aimed at their reasoning,
+for example:
+  "If you're unfamiliar with this topic, I'm happy to walk you through it."
+  "Would you like me to explain it like you're in third grade?"
+  "Please try harder next time."
+  "That's the version they hand out in Sunday school; the adult version is harder."
+  "Take a minute with it. I'll wait."
+  "I'd grade that, but I don't want to discourage you."
+Write your own in that spirit; never use the same one twice in a debate.
+NO jab when: the argument is genuinely strong or clever (credit it and give
+a straight rebuttal - jabs only land because they're earned), they're
+asking a question, agreeing with you, speaking as moderator, the mic
+garbled them, or they've said something personal or sincere (fear of
+death, grief). One jab per turn, always AFTER the actual reason.
+
+TONE BOUNDARY (every mode). Their reasoning, effort and grasp of the topic
+are fair game. Who they are is not: never their looks, family, race,
+nationality, sex, disability, or their faith community as people.
+"Your argument is lazy" is fine; "you're stupid" is not.
+
+The snark rides on TOP of the argument and never replaces it: every quip
+must sit beside the actual reason the thing fails, in the same breath.
+Back-to-back quips are
 fine when both turns earn one; pull back only if it starts reading as a
 bit you're performing rather than a reaction to what they just said. A
 run of turns that are ALL flat and dry with nothing behind them means
@@ -970,9 +1084,10 @@ precise turns, the spicier one wins; a plodding turn that's precise still
 beats a funny one that's hollow.
 
 Vary your openings. If the last turn began by naming what they're doing
-("You're conflating..."), start the next differently - with the
-consequence, a flat contradiction, the distinction itself, or a
-concession before the cut.
+("You're conflating...") or with "Your argument fails because...", start
+the next differently - "That collapses the moment...", the consequence, a
+flat contradiction, the distinction itself, or a concession before the
+cut. Don't open with "That's a non sequitur" more than once a debate.
 
 REFERENCE: THE BITE MODEL
 
@@ -1033,7 +1148,7 @@ def summarize_and_save_memory(convo):
             ),
         }]
         resp = requests.post("http://127.0.0.1:11434/api/chat", json={
-            "model": "qwen3.8:27b",
+            "model": "qwen3.8-abliterated:27b",
             "messages": summary_request,
             "think": "low",
             "stream": False,
@@ -1083,7 +1198,7 @@ def prime_model(convo, label="model"):
     try:
         t0 = time.time()
         requests.post("http://127.0.0.1:11434/api/chat", json={
-            "model": "qwen3.8:27b",
+            "model": "qwen3.8-abliterated:27b",
             "messages": convo,
             # v2.47: same think value real turns send (False unless deep).
             "think": _think_effort(deep_mode["on"]),
@@ -1172,6 +1287,12 @@ def synth_worker():
     puts (audio, is_final) onto audio_queue. Runs continuously so synthesis
     for the NEXT sentence happens while the CURRENT one is still playing.
 
+    v2.65: once a reply has started playing, any further sentences already
+    waiting are joined into one synthesis call (SYNTH_GROUPING) so Kokoro
+    gives them one continuous intonation instead of a reset per sentence.
+    Only what is already queued is taken - it never waits for more text -
+    so playback can't starve. The first chunk of a reply is always alone.
+
     Wrapped in try/except so a bad synthesis (unusual character, TTS glitch)
     can't kill this thread. If it did, speech_queue.join() in the main loop
     would block forever on the next turn since task_done() would never be
@@ -1182,10 +1303,24 @@ def synth_worker():
             speech_queue.task_done()
             continue
         sentence, is_final = item
+        taken = 1
+        if SYNTH_GROUPING and turn_timing["first_audio_time"] is not None:
+            parts = [sentence]
+            while len(" ".join(parts)) < SYNTH_GROUP_MAX_CHARS:
+                try:
+                    nxt = speech_queue.get_nowait()
+                except queue.Empty:
+                    break
+                taken += 1
+                if nxt is None:
+                    continue
+                parts.append(nxt[0])
+                is_final = nxt[1]
+            sentence = " ".join(parts)
         gen = _audio_gen["n"]
         try:
             t0 = time.time()
-            generator = tts_pipeline(clean_for_speech(sentence), voice="af_bella", speed=TTS_SPEED)
+            generator = tts_pipeline(clean_for_speech(sentence), voice=VOICE, speed=TTS_SPEED)
             chunks = [audio for _, _, audio in generator]
             if chunks:
                 full_audio = np.concatenate(chunks).astype(np.float32)
@@ -1196,7 +1331,8 @@ def synth_worker():
         except Exception as e:
             print(f"\n[synth error, skipping sentence: {e}]")
         finally:
-            speech_queue.task_done()
+            for _ in range(taken):
+                speech_queue.task_done()
 
 def _open_output_stream():
     """Open the persistent playback stream, trying progressively more
@@ -1524,10 +1660,14 @@ def _topic_vocab():
     safe for a list."""
     # globals().get: sophia_bench exec's this file up to the main loop and
     # calls transcribe() directly - never fail transcription over a pack.
-    for m in globals().get("conversation", []):
-        if m.get("role") == "system" and HISTORICITY_MARKER in (m.get("content") or ""):
-            return " " + HISTORICITY_VOCAB_PACK
-    return ""
+    # v2.69: one pack per live topic; both can be live in the same debate.
+    packs = []
+    for marker, pack in ((HISTORICITY_MARKER, HISTORICITY_VOCAB_PACK),
+                         (MORALITY_MARKER, MORALITY_VOCAB_PACK)):
+        if any(m.get("role") == "system" and marker in (m.get("content") or "")
+               for m in globals().get("conversation", [])):
+            packs.append(pack)
+    return (" " + " ".join(packs)) if packs else ""
 
 
 def _whisper_transcribe(audio, context=""):
@@ -1775,6 +1915,167 @@ def _open_question_note(q):
     )
 
 
+
+# v2.63 answer-the-question + anti-repetition guards
+#
+# Live 2026-10-09 (hands-free): the opponent asked "what properties would you
+# accept as a definition of God?" four turns running. She refused it four
+# times ("I don't accept a definition"), two of those replies were IDENTICAL,
+# and five replies ended with the same "What specific properties are you
+# actually trying to defend?". Asked plainly later, she answered fine.
+#
+# This is the fourth time "she won't answer questions" has come up (v2.3,
+# v2.19, v2.22 were all prompt patches). The agreed rule was that a fourth
+# time goes into code: detect the question deterministically and say so on
+# the turn. And the v2.56 open-question note was feeding the loop - it told
+# her to "say plainly that your question is still open" on the very turns
+# where the opponent was asking HER something.
+DIRECT_QUESTION_GUARD_ON = True
+REPEAT_REPLY_GUARD_ON = True
+REPEAT_SIMILARITY = 0.80      # 0-1 text similarity that counts as "the same reply"
+REPEAT_QUESTION_SIMILARITY = 0.75
+
+_WH_OPENER = re.compile(r"^(?:so|ok(?:ay)?|but|and|well|then)?[,\s]*(what|why|how|which|who|whom|whose|where|when)\b", re.I)
+
+
+def _norm_text(t):
+    return re.sub(r"[^a-z0-9 ]+", "", (t or "").lower().replace("\u2019", "'"))
+
+
+def _similar(a, b):
+    return difflib.SequenceMatcher(None, _norm_text(a), _norm_text(b)).ratio()
+
+
+_INDIRECT_Q = re.compile(
+    r"\b(?:figure out|want to know|wondering|i'm asking|i am asking|tell me|explain)\s+"
+    r"(?:to me\s+)?(?:what|why|how|which|who|whether|if)\b", re.I)
+_TAG_Q = re.compile(r"^(?:correct|right|agreed|true|yes or no|do you agree|is that right|fair)[.!]?$", re.I)
+QUESTION_TAIL_SENTENCES = 3   # a question must sit in the last N sentences to count
+
+
+def _direct_question(text):
+    """The question they are putting to her this turn, if any.
+
+    Counts: a sentence ending in '?'; a what/why/how-style sentence Whisper
+    left without one; an indirect ask ("I'm trying to figure out what...");
+    and a tag ("...that would be circular. Correct."). Only the last
+    QUESTION_TAIL_SENTENCES sentences are looked at, so an aside buried in
+    the middle of a long argument ("should I just give the whole argument?")
+    doesn't turn the whole turn into a question."""
+    if not DIRECT_QUESTION_GUARD_ON or not text:
+        return None
+    if text.startswith(MODERATOR_PREFIX) or text in (VERDICT_INSTRUCTION, STEELMAN_INSTRUCTION):
+        return None
+    sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x.strip()]
+    if not sentences:
+        return None
+    if len(sentences) >= 2 and _TAG_Q.match(sentences[-1]):
+        return f"{sentences[-2].rstrip('.!')}, {sentences[-1].rstrip('.!').lower()}?"
+    tail = sentences[-QUESTION_TAIL_SENTENCES:]
+    for test in (
+        lambda x: x.endswith("?") and len(x.split()) >= 5,
+        # a short "?" only counts in a short turn - in a long argument,
+        # "Oh wait, what happened?" is an aside, not the point
+        lambda x: x.endswith("?") and len(x.split()) >= 3 and len(text.split()) <= 60,
+        lambda x: bool(_WH_OPENER.match(x)) and len(x.split()) >= 4,
+        lambda x: bool(_INDIRECT_Q.search(x)),
+    ):
+        hits = [x for x in tail if test(x)]
+        if hits:
+            return hits[-1]
+    return None
+
+
+def _direct_question_note(q):
+    return (
+        "[TURN NOTE - from the system, not from your opponent] They asked you "
+        f"a direct question: {q!r} This turn is ANSWER. Your first sentence "
+        "gives the actual answer - something concrete they could write down - "
+        "not a refusal of the question, not a lecture on why it is the wrong "
+        "question, and not a question back. If it rests on a premise you "
+        "reject, answer as far as the premise allows, then say in one clause "
+        "what is wrong with it. If they have asked this before and you "
+        "deflected, that is why they are asking again: answer it this time. "
+        "Do not end this reply with a question."
+    )
+
+
+def _times_asked(convo, q):
+    """How many of her replies ended with (roughly) this question."""
+    n = 0
+    for m in convo:
+        if m.get("role") != "assistant":
+            continue
+        tail = re.split(r"(?<=[.!?])\s+", (m.get("content") or "").rstrip())[-1]
+        if tail.endswith("?") and _similar(tail, q) >= REPEAT_QUESTION_SIMILARITY:
+            n += 1
+    return n
+
+
+def _worn_out_question_note(q, n):
+    return (
+        "[TURN NOTE - from the system, not from your opponent] You have now "
+        f"ended {n} replies with essentially the same question: {q!r} They "
+        "have heard it. Do not ask it again and do not say it is still open. "
+        "Respond to the exact words of their latest turn instead."
+    )
+
+
+def _is_repeat_reply(convo, reply, window=3):
+    """True if `reply` is near-identical to one of her last `window` replies."""
+    if not REPEAT_REPLY_GUARD_ON or not reply.strip():
+        return False
+    recent = [m.get("content") or "" for m in convo if m.get("role") == "assistant"][-window:]
+    return any(_similar(reply, r) >= REPEAT_SIMILARITY for r in recent)
+
+
+_REPEAT_REPLY_CORRECTION = (
+    "[TURN NOTE - from the system, not from your opponent] Your last reply "
+    "repeated one of your earlier replies almost word for word, and they "
+    "heard both. Say something new this turn: engage the exact words of "
+    "their latest message, and if you are holding your position, give a "
+    "different reason or a concrete example rather than the same sentences."
+)
+_repeat_reply_pending = {"on": False}
+
+
+# Echo guard (v2.67)
+#
+# Simulator runs 2026-10-15 (sim_runs/20261015-183918 and -190409): 4 of 120
+# replies were the opponent's own sentence handed back verbatim ("You're
+# conflating the medium with the message, and that's a classic mythicist
+# trap." - his line, then hers). Unlike a repeat of her OWN earlier reply,
+# this can be caught before anything is spoken: the echo is always the first
+# chunk. Only flags a chunk of >= ECHO_MIN_CHARS that sits inside their text
+# or nearly matches one of their sentences - "You said X" is not inside their
+# text, so quoting with attribution passes.
+ECHO_GUARD_ON = True
+ECHO_MIN_CHARS = 25
+ECHO_SIMILARITY = 0.85
+
+
+def _echoes_opponent(fragment, their_text):
+    if not ECHO_GUARD_ON or not their_text:
+        return False
+    frag = _norm_text(fragment)
+    if len(frag) < ECHO_MIN_CHARS:
+        return False
+    theirs = _norm_text(their_text)
+    if frag in theirs:
+        return True
+    for sent in re.split(r"(?<=[.!?])\s+", their_text):
+        if len(_norm_text(sent)) >= ECHO_MIN_CHARS and _similar(fragment, sent) >= ECHO_SIMILARITY:
+            return True
+    return False
+
+
+_ECHO_CORRECTION = (
+    "[TURN NOTE - from the system, not from your opponent] Your draft reply "
+    "began by repeating your opponent's own sentence back to them, word for "
+    "word. Don't. Answer what they said in your own words."
+)
+
+
 # Persona-slip guard (v2.54)
 #
 # 2026-09-19, four replies in one session: "I am an AI assistant, not a
@@ -1804,6 +2105,14 @@ _PERSONA_SLIP_PATTERNS = [
     r"i'?m an ai(?: assistant)?,? not\b",
     r"i am an ai(?: assistant)?,? not\b",
     r"here to help (?:you )?with your questions",
+    # v2.64 - live 2026-10-09, after a prompt-injection attempt: "I am an AI
+    # assistant designed to provide helpful and harmless responses while
+    # strictly adhering to privacy and safety guidelines."
+    r"(?:i am|i'?m) an ai assistant\b",
+    r"designed to (?:provide|be) helpful",
+    r"helpful(?:,)? (?:and|honest(?:,)? and) harmless",
+    r"(?:privacy|safety) (?:and (?:safety|privacy) )?guidelines",
+    r"as an ai language model",
 ]
 _persona_slip_pending = {"on": False}
 
@@ -1846,7 +2155,14 @@ _PERSONA_CORRECTION = (
 # two drifting apart would mean the gate and the bot disagree about what
 # counts as a repeat.
 REPEAT_GUARD_ON = True      # set False to take the guard out of the path
-REPEAT_GUARD_DEEP_AT = 2    # reuse count at which the turn escalates to think="high"
+REPEAT_GUARD_DEEP_AT = 2    # reuse count at which the note hardens (and, if enabled, escalates)
+# v2.62: escalation to think="high" OFF. Live 2026-10-09 (hands-free) it
+# fired on "non sequitur" x3, burned the whole 2560-token budget reasoning,
+# retried at 5120, and she said nothing for 91 seconds - then answered
+# wrongly anyway. A live room can't wait that long. The note above still
+# goes in (including the harder "you've answered this already" wording);
+# only the switch to deep reasoning is off. Set True to restore it.
+REPEAT_GUARD_ESCALATE = False
 REPEAT_GUARD_WINDOW = 4     # how many of her recent replies count as "recently"
 
 # The window matters more than it looks. Replayed against the real
@@ -1918,7 +2234,7 @@ def _repeat_guard(convo):
             "diagnosing: say plainly that you have answered this already and "
             "ask what they have beyond the same move."
         )
-    return note, worst >= REPEAT_GUARD_DEEP_AT
+    return note, (REPEAT_GUARD_ESCALATE and worst >= REPEAT_GUARD_DEEP_AT)
 
 
 def get_response_streaming(text, interrupt_event=None):
@@ -1955,9 +2271,17 @@ def get_response_streaming(text, interrupt_event=None):
     # background for the rest of the debate, and after this turn it is
     # part of the cached prefix. 'new' rebuilds the list, which clears it.
     # Request options (num_ctx included) are not touched.
-    if inject_if_relevant(conversation, text):
-        print("[historicity reference loaded for this debate]", flush=True)
-        log_event("session", "historicity reference injected")
+    # v2.66: also adds matching argument cards on later turns (each once).
+    loaded = inject_if_relevant(conversation, text)
+    if loaded:
+        print(f"[historicity reference: {', '.join(loaded)}]", flush=True)
+        log_event("session", "historicity reference injected: " + "; ".join(loaded))
+    # v2.69 morality reference - same mechanism, separate topic and log line
+    # (sophia_sim and the scorecard key on the historicity line only).
+    m_loaded = inject_morality(conversation, text)
+    if m_loaded:
+        print(f"[morality reference: {', '.join(m_loaded)}]", flush=True)
+        log_event("session", "morality reference injected: " + "; ".join(m_loaded))
 
     # v2.52 repetition guard. `messages` is conversation plus, when she has
     # already named a flaw, a one-request note reminding her of it. The note
@@ -1965,13 +2289,25 @@ def get_response_streaming(text, interrupt_event=None):
     # stored in `conversation`.
     guard_note, guard_deep = _repeat_guard(conversation)
     open_q = _her_open_question(conversation)
+    their_q = _direct_question(text)          # v2.63
+    worn_q = 0
+    if open_q:
+        worn_q = _times_asked(conversation, open_q)
     notes = []
     if _persona_slip_pending["on"]:
         notes.append(_PERSONA_CORRECTION)
         _persona_slip_pending["on"] = False
+    if _repeat_reply_pending["on"]:
+        notes.append(_REPEAT_REPLY_CORRECTION)
+        _repeat_reply_pending["on"] = False
     if guard_note:
         notes.append(guard_note)
-    if open_q:
+    if their_q:
+        # Their question wins: no "your question is still open" this turn.
+        notes.append(_direct_question_note(their_q))
+    elif open_q and worn_q >= 2:
+        notes.append(_worn_out_question_note(open_q, worn_q))
+    elif open_q:
         notes.append(_open_question_note(open_q))
     # One merged note, not three stacked system turns - v2.54 showed a
     # trailing system message can pull her out of persona, and one is less
@@ -1997,10 +2333,12 @@ def get_response_streaming(text, interrupt_event=None):
 
     buffer = ""
     full_reply = ""
+    chunks_queued = 0   # v2.65: comma-splitting only until the first chunk
     done_reason = ""
     first_token_time = None
     thinking_shown = False
     ollama_stats = {}
+    echo_aborted = False   # v2.67
     request_sent_time = time.time()
     turn_timing["request_start"] = request_sent_time
     turn_timing["first_audio_time"] = None
@@ -2012,10 +2350,10 @@ def get_response_streaming(text, interrupt_event=None):
         main body so the RETRY below (v2.39) can reuse it verbatim instead
         of duplicating the whole streaming loop - shares state with the
         enclosing call via nonlocal."""
-        nonlocal buffer, full_reply, done_reason, first_token_time, thinking_shown, ollama_stats
+        nonlocal buffer, full_reply, done_reason, first_token_time, thinking_shown, ollama_stats, chunks_queued, echo_aborted
         try:
             resp = requests.post("http://127.0.0.1:11434/api/chat", json={
-                "model": "qwen3.8:27b",
+                "model": "qwen3.8-abliterated:27b",
                 "messages": messages,
                 "think": think_flag,
                 "stream": True,
@@ -2068,9 +2406,17 @@ def get_response_streaming(text, interrupt_event=None):
                         for sentence in parts[:-1]:
                             sentence = restore_abbreviations(sentence.strip())
                             if sentence:
+                                # v2.67 echo guard: first chunk only, before it is spoken.
+                                if chunks_queued == 0 and not echo_retry_done and _echoes_opponent(sentence, text):
+                                    echo_aborted = True
+                                    break
                                 speech_queue.put((sentence, True))
+                                chunks_queued += 1
+                        if echo_aborted:
+                            resp.close()
+                            break
                         buffer = restore_abbreviations(parts[-1])  # remainder stays in buffer
-                    elif len(buffer) > CLAUSE_THRESHOLD:
+                    elif len(buffer) > CLAUSE_THRESHOLD and (chunks_queued == 0 or not SYNTH_GROUPING):
                         # No full sentence yet, but buffer is getting long - split on
                         # the last comma so audio can start sooner.
                         comma_parts = COMMA_SPLIT.split(buffer)
@@ -2078,11 +2424,22 @@ def get_response_streaming(text, interrupt_event=None):
                             for clause in comma_parts[:-1]:
                                 clause = clause.strip()
                                 if clause:
+                                    if chunks_queued == 0 and not echo_retry_done and _echoes_opponent(clause, text):
+                                        echo_aborted = True
+                                        break
                                     speech_queue.put((clause, False))
+                                    chunks_queued += 1
+                            if echo_aborted:
+                                resp.close()
+                                break
                             buffer = comma_parts[-1]
 
                 if chunk.get("done"):
                     done_reason = chunk.get("done_reason", "")
+                    # v2.67: a one-sentence echo never hits a sentence split -
+                    # it is still sitting in `buffer` here, unspoken.
+                    if chunks_queued == 0 and not echo_retry_done and _echoes_opponent(buffer, text):
+                        echo_aborted = True
                     # Ollama's final chunk carries per-request performance
                     # counters - keep the ones that matter for later analysis.
                     # load_ms > ~1000 on a turn means the model runner was
@@ -2107,7 +2464,23 @@ def get_response_streaming(text, interrupt_event=None):
         except Exception as e:
             print(f"\n[unexpected error during response streaming: {e}]")
 
+    echo_retry_done = False
     _stream_once(num_predict)
+
+    # v2.67 ECHO RETRY: the first chunk was their own sentence, and nothing was
+    # spoken. Regenerate once with a correction note (not stored in
+    # `conversation`, like the other turn notes). A second echo goes through.
+    if echo_aborted:
+        print("\n[echo guard: draft repeated their words - regenerating]", flush=True)
+        log_event("session", "echo guard: regenerated a reply that echoed the opponent")
+        echo_retry_done = True
+        echo_aborted = False
+        messages = messages + [{"role": "system", "content": _ECHO_CORRECTION}]
+        buffer, full_reply, done_reason = "", "", ""
+        first_token_time, thinking_shown, ollama_stats = None, False, {}
+        chunks_queued = 0
+        print("Sophia: ", end="", flush=True)
+        _stream_once(num_predict)
 
     # RETRY (v2.39): reasoning occasionally still consumes the ENTIRE
     # budget with zero answer tokens produced (done_reason "length", empty
@@ -2159,6 +2532,10 @@ def get_response_streaming(text, interrupt_event=None):
             full_reply = fallback_line
 
     print()  # newline after the streamed text
+    repeated_reply = (not interrupted) and _is_repeat_reply(conversation, full_reply)
+    if repeated_reply:
+        print("[repeat guard: reply duplicated an earlier one - correcting next turn]", flush=True)
+        _repeat_reply_pending["on"] = True
     persona_slip = _is_persona_slip(full_reply)
     if persona_slip:
         # Spoken already - can't be helped. Keep it out of the context so
@@ -2187,7 +2564,10 @@ def get_response_streaming(text, interrupt_event=None):
         think=think_flag,
         num_predict=num_predict,
         persona_slip=persona_slip,
-        open_question_guard=bool(open_q),
+        open_question_guard=bool(open_q) and not their_q,
+        direct_question=bool(their_q),
+        worn_question=worn_q if open_q and not their_q and worn_q >= 2 else None,
+        repeated_reply=repeated_reply,
         repeat_guard=bool(guard_note),
         repeat_guard_deep=guard_deep,
         labels_used=_labels_already_used(conversation, window=0) or None,
@@ -2300,7 +2680,7 @@ print(f"Logging this session to {LOG_PATH}")
 log_event("session", "session started", version=VERSION, voice_activated=VOICE_ACTIVATED, config={
     # Snapshot of every setting that affects the numbers in this log, so
     # sessions stay comparable even after these values get tuned later.
-    "model": "qwen3.8:27b",
+    "model": "qwen3.8-abliterated:27b",
     "num_ctx": 16384,
     # Stale "280" literal here (pre-v2.39) never matched the real
     # NORMAL_NUM_PREDICT after that got raised to 450 - fixed in v2.40.
@@ -2309,7 +2689,7 @@ log_event("session", "session started", version=VERSION, voice_activated=VOICE_A
     # the actual value used for each one.
     "num_predict": NORMAL_NUM_PREDICT,
     "temperature": 0.3,
-    "voice": "af_bella",
+    "voice": VOICE,
     "speed": TTS_SPEED,
     "whisper_model": WHISPER_MODEL_SIZE,
     "chunk_seconds": CHUNK_SECONDS,

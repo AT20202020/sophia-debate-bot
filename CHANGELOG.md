@@ -3,6 +3,366 @@
 Full version history. Extracted from the `debate_voice.py` module docstring in v2.20,
 where it had grown to 396 lines — a quarter of the file.
 
+## v2.71 - uncensored model (2026-10-17)
+
+Switched from qwen3.8:27b to qwen3.8-abliterated:27b (huihui-ai abliterated
+weights, Q4_K_M, wrapped in the stock Ollama qwen3.8 template). Jeff's call
+after compare run 20261017-0033 (46 cases x 2 passes, one fixed judge):
+
+| | stock | abliterated |
+|---|---|---|
+| score | 4.27 | 4.49 |
+| judge accuracy | 4.39 | 4.51 |
+| median reply | 3.06s | 2.76s |
+| code-check fails | 13 | 5 |
+| ducking phrases | 2 | 0 |
+
+Stock refused Tiananmen both passes ("I cannot provide information on that
+topic."); abliterated answered plainly. Abliterated was worse on h3 (Mara bar
+Serapion) and stated "moral facts are objective features of reality" as her own
+view on m3 - watch the no-own-moral-theory rule.
+
+Changed: the 4 "model" lines in debate_voice.py; MODEL_NAME in Start Sophia.bat.
+
+Works for other users (repo): Start Sophia.bat builds the model if it's missing
+(make_abliterated_model.py downloads the weights and creates it, taking the
+template from an installed qwen3.8:27b or, failing that, the shipped
+abliterated.modelfile - so a new user needs ~17 GB, not two models). Run *.bat
+tools look for the launcher's sophia-env first, then open-webui-env. README:
+new "The model" section; .gitignore: training_runs/, compare_runs/, sim_runs/,
+bench_runs/. sophia_compare v1.2 compares against stock qwen3.8:27b when B
+would equal Sophia's own model.
+Side effect: the trainer's judge uses Sophia's model, so training scores from
+now on are judged by the abliterated model - not directly comparable with
+earlier runs. Rollback: put qwen3.8:27b back in those 5 places.
+
+## v2.70 - closing jab (2026-10-16)
+
+Jeff wanted her spicier and gave the target himself, rewriting a reply:
+"Your argument fails because it is a non sequitur, not a solution ... Please
+try harder next time." Decisions (asked): jab on WEAK or LAZY arguments only;
+the old "attack the move, never the person" rule becomes "mock their
+reasoning, never who they are".
+
+- CLAIM mode: weak arguments get a verdict opener ("Your argument fails
+  because...") then the reason. Old "never attack the person" sentence replaced.
+- HOW YOU SOUND: new CLOSING JAB block with six example lines (three are Jeff's),
+  never the same one twice a debate, one per turn, always after the reason;
+  no jab on strong arguments, questions, agreement, moderator turns, garbled
+  input, or sincere personal turns. New TONE BOUNDARY: reasoning, effort and
+  grasp of the topic are fair game; looks, family, race, nationality, sex,
+  disability and faith community as people are not.
+- POSTURING: dropped the ban on "wasting my time / performing / destroyed your
+  credibility"; kept the ban on telling them to fix their syntax (mic failures).
+- Openings: "That's a non sequitur" at most once a debate (it opened 3 of 5
+  sampled replies).
+- Tools: trainer judge told the jab is by design (and to penalise misplaced
+  jabs); reviser told to keep it; 3 tone cases (t1 lazy argument -> jab,
+  t2 strong Kalam premise -> no jab, t3 fear of death -> no jab); 7 openness
+  probes (o1-o7) for the model comparison.
+
+- LOW EFFORT mode (routing line 3, above ANSWER): clean-syntax taunts, troll
+  hypotheticals and premise-free questions get "low effort" plus at most a
+  one-clause answer. From the 2026-10-15 log: "If you were an angel created by
+  God... would Jesus be your father?" got an earnest two-line reply, then "It
+  can't answer... it's broke" got a category-error lecture. Broken syntax still
+  routes to MIC CHECK; earnest questions still go to ANSWER. Routing lines
+  renumbered (ANSWER is now 4, MIC CHECK 5, POSTURING 6, CLAIM 7). Cases: c3
+  now expects "low effort", new c4 (taunt) and c5 (earnest Shroud question
+  must NOT be called low effort); t1 reworded as a claim so it routes to CLAIM.
+
+- From training run 20261016-1620 (12 rounds, 2 kept): ANSWER-mode rule against
+  inventing what an unknown named term/author says (Elliott trichotomy 1.25 -> 5.0,
+  invented book 4.25 -> 5.0), and "define faith" gives both senses. Merged by hand
+  with ONE change: the kept version over-fired - asked about Fatima she said "I
+  don't know how to explain that" / "I don't recognize 'the sun dance'" (the
+  judge still gave it 3.7). Wording now limits it to genuinely unfamiliar NAMES
+  and says famous events/arguments always get a real answer. New _FALSE_DUNNO
+  code check on x1, x3, a1, a3, f3; x1 now requires actual content.
+- Not fixed by training: a6 Gale & Pruss still invented (she doesn't treat a
+  real-but-half-known name as unknown); Shroud sampling (h6).
+- Trainer v1.3: cards outside knowledge/historicity|morality are rejected - two
+  rounds (fatima, gale-pruss cards) wrote cards to folders nothing loads.
+
+- Model comparison run 20261016-2146 (stock vs abliterated, 46 x 2): INVALID for
+  B - 42 of 92 B turns were the "lost my train of thought" fallback in 0.02s, all
+  of them turns where Sophia appends a system note after the user (direct
+  questions). The Hugging Face GGUF's own chat template can't take that; stock
+  qwen3.8:27b uses Ollama's. Fix: make_abliterated_model.py builds
+  qwen3.8-abliterated:27b from the stock Modelfile with only FROM swapped;
+  sophia_compare v1.1 preflights the trailing-system-note case. On the 50 turns
+  B did answer: score 4.48 vs 4.34, median 2.7s vs 3.2s - promising, not proof.
+  Stock model on o1 (Tiananmen), both passes: "I cannot provide information on
+  that topic." - the vendor slant is real.
+
+Unverified until a real session and a training/compare run - prompt only.
+
+## Training session (tools, no Sophia version change)
+
+**New: `sophia_trainer.py` + `training_cases.py` + `Run Training Session.bat`.** Jeff wants a
+one-hour unattended "training session" that fast-tracks faster, more accurate answers.
+
+- `training_cases.py`: 34 cases across historicity, morality, classic arguments, evil,
+  miracles/prayer, science, direct questions, fabrication traps (invented terms,
+  an invented book) and conversation traps (repeat the same question; agreement turn).
+  Built from real failures: Shroud sampling, "deistic God of classical theism", the
+  Elliott-trichotomy invention, logic-as-human-construct, Mara forgery, Horus myth.
+- Each round runs every case through a CANDIDATE copy of Sophia (real code path,
+  guards and cards), times every reply, scores it with code checks + the local judge
+  (accuracy / answered / concise), then the `claude` CLI proposes ONE small text edit
+  (SYSTEM_PROMPT, a reference CORE, or a card - code edits are rejected
+  automatically; the CLI runs with file-editing tools disallowed). Kept only if the
+  score rises >= 0.08 (confirmed by a second run, >= 0.05 average) without being >15%
+  slower, or if it is 15%+ faster at the same score. Duplicate edits are skipped;
+  stops at the time budget, 5 rejects in a row, or 20 rounds.
+- Live files are never touched. Output: training_runs/<time>/REPORT.md, best/,
+  best_vs_baseline.diff, eval_*.json with every reply.
+
+## v2.69
+
+**Morality topic: second set of argument cards.** Jeff asked after a live session
+(2026-10-15) where Whisper heard "Hegel" as "Hayley", so she only answered the Kant
+half, and where she said "I believe objective morality exists, grounded in minimizing
+suffering" and was then pressed on grounding.
+
+- New `knowledge_cards.py`: a generic Topic engine (CORE once + matching cards each
+  once, only while live, max 2 new per turn / 6 per debate). Same logic as
+  historicity_reference.py, which is unchanged and can move onto it later.
+- New `morality_reference.py` + `knowledge/morality/` with 6 cards: the moral
+  argument, Euthyphro, objective morality without God, Hume's is-ought gap, Kant
+  (both his autonomy ethics and his moral argument for God), Hegel (dialectical
+  logic, the Absolute, ethical life). "Hayley"/"Haley" are Hegel-card triggers.
+- **Her role (Jeff's call): no commitment, attack only.** She defends no moral
+  theory; the theist carries the burden; she still says plainly that e.g. the
+  Holocaust was wrong (every metaethical view agrees; the dispute is what makes
+  it wrong).
+- `debate_voice.py`: second injection call after the historicity one, its own
+  print and log line; `_topic_vocab()` returns one Whisper pack per live topic.
+  Morality pack: Hegel, Kant, Euthyphro, categorical imperative, metaethics,
+  Wielenberg. `measure_vocab_tokens.py` now measures both packs together.
+- Self-test: `python morality_reference.py` (all pass).
+- **sophia_sim.py 2.0: `--topic historicity|morality`.** Morality topic has its own
+  opponent styles (philosopher / apologist / everyday believer), 16 openers, and a
+  reviewer told her role (no moral theory of her own). New code-checked line in the
+  morality report: replies where she states a moral theory as her own or says
+  "nothing is wrong". Run folders are now named `<timestamp>-<topic>`.
+- **New `Run Unattended Tests.bat`**: historicity then morality, `DEBATES=60` each
+  (~2 hours), no input needed; opens both reports at the end.
+- **Cards from Daniel Henson's outline "The Problem of Faith and Evidence"** (Scribd,
+  "Dossier of Reason", ~2012), read in the viewer and rewritten as two-sided cards with
+  accuracy notes - not copied: morality cards for biblical commands (conquest, slavery,
+  Isaac), selective obedience (stoning, mixed fabrics), evolutionary roots of morality,
+  and religion vs. societal health (fixes the outline's wrong "93% of scientists are
+  atheists"); a historicity card on pagan savior-god parallels (warns off the
+  Horus/Krishna/Mithras claims); a Heaven's Gate line added to the martyrdom card.
+  Morality TRIGGER now also fires on genocide, slavery, Stalin, crusades, stoning etc.
+  Totals: 10 morality cards, 20 historicity cards.
+
+Also seen in the same live log, not yet fixed: she called it "the deistic God of
+classical theism" (deism and classical theism are different); she repeated the
+"attacks my hardware, not my reasoning" reply three times; and she again stated
+"Tacitus and Josephus likely relied on Christian sources" without attribution.
+
+## v2.68
+
+**Historicity: assigned skeptic role.** Jeff's decision after sim run
+sim_runs/20261015-193414 (10 debates). With v2.66's "no side assigned", she conceded
+existence in her first reply of one debate and then argued against divinity for five
+turns (nobody had claimed it); in another she conceded "a real founder" and then
+argued the celestial theory in the same debate. CORE now assigns her the skeptic /
+agnostic side for the whole debate, like a debate-team side, held honestly: credit
+strong points, concede specific facts, never overstate, never argue against claims
+not made (divinity, miracles). The v2.67 attribution rule stays.
+`sophia_sim.py` 1.3: reviewer told B's side is assigned; conceding a fact is fine,
+switching sides is a failure.
+
+Same run, for the record: echoes 0 of 60 (v2.67 guard; 4 of 120 before). Repeats of
+her own earlier reply 5 of 60, unchanged - still open. Scorecard case c22 ("while not
+becoming a mythicist") predates the role and may need its focus text updated.
+
+## v2.67
+
+**Echo guard; card positions must be attributed; 9 more cards; debate simulator.**
+
+From the first two `sophia_sim.py` runs (sim_runs/20261015-183918, -190409; 20
+debates, 120 replies).
+
+- **Echo guard** (`_echoes_opponent`, `_ECHO_CORRECTION`, `ECHO_GUARD_ON`). 4 of 120
+  replies were the opponent's own sentence handed back verbatim. The first chunk is
+  now checked before it is queued for speech, and so is a one-sentence reply still in
+  the buffer at `done`. On an echo the stream is closed, nothing is spoken, and the
+  turn is regenerated once with a correction note (not stored in `conversation`). A
+  second echo goes through rather than looping. A quote with attribution ("You said
+  ...") is not inside their text and passes. Tested against 5 scripted cases.
+- **historicity_reference.py CORE**: a card's CASE FOR / CASE AGAINST are positions
+  to attribute, never settled facts; state plainly what both sides accept; follow a
+  card's ACCURACY NOTES. Both runs had her state "Tacitus and Josephus are not
+  independent" / "just repeat Christian claims" as fact. CORE 2,341 -> 2,717 chars.
+- **9 new cards** (19 total) for the gaps both runs surfaced: Mara bar Serapion (with
+  an accuracy note - she invented "second-century Christian forgery" and "a Cynic"),
+  Pliny and Suetonius, the Talmud, comparisons with other ancient figures,
+  martyrdom, multiple attestation, setting and archaeology, Aramaic sayings, and
+  "a movement needs a founder".
+- **New: `sophia_sim.py` + `Run Simulator.bat`** (v1.2). Opponent (3 styles x 24
+  openers) argues for historicity against the live Sophia; an anonymized reviewer
+  (Speaker A/B - the first version gave Sophia 9 of 10) lists arguments, card gaps,
+  errors by either side, and claims to verify. Code-checked repeat/echo/fallback
+  counts lead the report and are the reliable part. Passes the bot's own repeat and
+  persona flags across turns (BotHarness.ask() otherwise resets them).
+
+Still open: she repeated an earlier reply of hers in 8 of 120 simulated replies;
+the existing repeat guard only corrects the NEXT turn.
+
+## v2.66
+
+**Historicity reference split into argument cards; no side assigned.**
+
+Jeff wants a growing library of arguments about the historical Jesus that Sophia
+can draw on, with "a fair fight" rather than an instruction about which side to take.
+
+- New folder `knowledge/historicity/`: one `.md` card per argument, each with
+  CLAIM / CASE FOR / CASE AGAINST / REPLIES TO WATCH FOR / WHERE SCHOLARS STAND /
+  SOURCES and a `triggers:` line. `README.md` holds the rules, `_TEMPLATE.md` the
+  blank card. 10 cards: Galatians 1:19, Paul's silence, Josephus, Tacitus, no
+  contemporary sources, Gospel dating, criterion of embarrassment, the
+  1 Corinthians 15 creed, the celestial-Jesus theory, scholarly consensus.
+- `historicity_reference.py`: the old ~4,650-char block is now a ~2,340-char CORE
+  (definition, unchanged, plus a neutral how-to-handle section) injected once as
+  before, then matching cards added turn by turn: max 2 new per turn, 6 per debate,
+  each once, and only while the topic is live. Cards are re-read when a file
+  changes. `MARKER` and `VOCAB_PACK` unchanged, so `_topic_vocab()` and
+  `sophia_scorecard.py` work as before.
+- **Prompt-behavior change:** the v2.57 "HOW TO ARGUE IT" lines ("treat
+  historicity as an open question the surviving evidence cannot settle", "never
+  call [mythicist arguments] fringe") are gone. CORE now says she is not assigned
+  a side, should say where the evidence points including when it favors the
+  opponent, and should call neither side fringe nor the question settled or wide
+  open. Also new: say you're unsure about an uncovered name/date/source rather
+  than guess (the gap scorecard c22 flagged in v2.57).
+- `debate_voice.py`: the call site prints/logs which blocks loaded
+  (`[historicity reference: core, Josephus (...)]`). Log text still contains
+  "historicity", which the scorecard keys on.
+- Self-test extended: parses every card, size limit 2,400 chars, injection order,
+  once-only, per-turn cap, cards never fire off-topic, and VERDICT/STEELMAN text
+  triggers nothing (verdict pop()s two messages). All pass.
+
+**Untested live.** Run `Run v2.57 Checks.bat` (self-test + eval) and the scorecard
+before trusting it, especially c22.
+
+## v2.65
+
+**More human voice: af_heart + af_bella blend, 1.05x, phrase-level synthesis.**
+
+Jeff compared six samples from the new `voice_samples.py` (`Make Voice Samples.bat`)
+and picked the af_heart/af_bella blend at 1.0x and 1.05x; 1.05x chosen for debate
+pace.
+
+- `VOICE = "af_heart,af_bella"` (Kokoro averages comma-separated voices) - one
+  constant used by the Whisper warm-up, the synth worker, the hands-free greeting
+  and the session log. First launch downloads af_heart (~0.5MB) if the sample
+  script hasn't already.
+- `TTS_SPEED` 1.15 -> 1.05.
+- **Synthesis grouping** (`SYNTH_GROUPING`, `SYNTH_GROUP_MAX_CHARS = 260`). Each
+  Kokoro call gives its text its own intonation contour, so clause-by-clause
+  synthesis made every comma sound like a sentence end - the samples showed the
+  difference clearly (A vs B). Now only the first chunk of a reply may be a
+  comma-split clause, so time-to-first-audio is unchanged; after it, sentences are
+  never comma-split, and sentences already waiting in the queue are synthesized
+  together. It only takes what is queued and never waits for more text, so
+  playback can't starve. `SYNTH_GROUPING = False` restores the old behavior.
+
+Live replies still can't be synthesized in one piece like the samples (that would
+mean silence until the whole reply is generated), so expect "between B and E", not
+identical to E.
+
+## v2.64
+
+**Persona-slip catch, source honesty, PSR vocabulary, hands-free self-knowledge
+and Start warm-up.** From the 2026-10-09 hands-free session review.
+
+- **Persona-slip patterns** (`_PERSONA_SLIP_PATTERNS`). After a prompt-injection
+  attempt she said "I am an AI assistant designed to provide helpful and harmless
+  responses while strictly adhering to privacy and safety guidelines" - not caught.
+  Added generic-assistant phrasings ("I'm an AI assistant", "designed to provide
+  helpful", "helpful and harmless", "privacy/safety guidelines", "as an AI language
+  model"). Against all 803 logged replies: 8 flagged, all genuine slips, no false
+  positives. "I'm an AI, I don't have senses" is NOT a slip - her prompt says she
+  is an AI and owns it - and is not matched.
+- **SYSTEM_PROMPT, CLAIM mode: "Their definitions and their sources."** In the PSR
+  exchange she "corrected" the opponent to "Graham Oppie" and described the paper
+  ("A New Cosmological Argument" is Gale & Pruss 1999; Oppy wrote the critique),
+  overrode his stipulated definition of "trivial" by claiming the paper defines it
+  otherwise, and declared premise 2 false without a reason. New paragraph: judge the
+  argument under their stipulated definition; don't summarize, re-attribute or
+  falsify a cited source unless sure; a premise called false needs the reason in the
+  same sentence. Placed inside CLAIM, next to the verbatim-premise rule. +~900
+  chars. Registered in `check_prompt_rules.py`. **Run the checks bat (sophia_eval)
+  before trusting it.**
+- **Whisper vocab:** "principle of sufficient reason, PSR, Leibniz, Pruss, Oppy"
+  (Oppy came through as "Oppie" and "Grand Moffy"). The checks bat re-measures the
+  vocab token budget.
+- **Hands-free knows it is hands-free.** She told the room "I can be interrupted at
+  any time". At Start, `HANDS_FREE_NOTE` is appended to her system prompt for that
+  debate (End resets it): she only hears while the screen says Listening, can't be
+  interrupted, may be paused.
+- **Hands-free warm-up at Start.** First turn after launch took 7.1s (launch priming
+  printed "0.0s" - not effective; open issue). The post-End re-prime has worked every
+  time (~0.9s first turns), so Start now runs the same `prime_model()` on
+  system+greeting in the background while the greeting plays.
+
+## v2.63
+
+**Answer-the-question and anti-repetition guards, in code.**
+
+Hands-free session 2026-10-09: the opponent asked "what properties would you
+accept as a definition of God?" four turns running. She refused it four times,
+two replies were word-for-word identical, and five replies ended with the same
+"What specific properties are you actually trying to defend?". This is the fourth
+time "she won't answer questions" has come up (v2.3, v2.19, v2.22 were prompt
+patches); the agreed rule was that the fourth time goes into code.
+
+Three per-turn notes, all appended last (cached prefix untouched, never stored in
+`conversation`), all on `get_response_streaming()` so they apply to both modes:
+
+- **Direct question** (`DIRECT_QUESTION_GUARD_ON`). `_direct_question()` finds the
+  question in the last 3 sentences of their turn: a `?` sentence, a what/why/how
+  sentence Whisper left without one, an indirect ask ("I'm trying to figure out
+  what..."), or a tag ("...that would be circular. Correct."). Short `?` asides in
+  long turns don't count. The note: first sentence is the actual answer, not a
+  refusal or counter-question; premise objections come after; don't end with a
+  question. Skipped for moderator / verdict / steelman turns.
+- **Open-question note no longer fights it.** The v2.56 "your question is still
+  open" note is suppressed when they asked *her* something, and when she has
+  already ended 2+ replies with essentially the same question it is replaced by
+  "you've asked this N times - drop it" (`_times_asked`, similarity >= 0.75).
+- **Duplicate reply** (`REPEAT_REPLY_GUARD_ON`). A reply >= 80% similar to one of
+  her last 3 is flagged after it's spoken (it can't be un-said) and the next turn
+  gets a "you repeated yourself - say something new" note.
+
+Replayed against the 2026-10-09 session: the direct-question note fires on all
+four "what properties" turns, the worn-out-question note on the two turns where
+she'd have re-asked, and the identical 18:54:46 reply is flagged. Over all 749
+logged user turns the direct-question note fires on ~48%, in line with routing
+line 3 (any question -> ANSWER) that it reinforces.
+
+Log fields added: `direct_question`, `worn_question`, `repeated_reply`
+(`open_question_guard` is now False when the direct-question note took over).
+
+## v2.62
+
+**Repeat guard no longer escalates to deep reasoning.**
+
+Hands-free session 2026-10-09, 19:21: she had said "non sequitur" three times, so
+the v2.52 repeat guard switched the turn to `think="high"`. Reasoning used the
+whole 2560-token budget, the v2.39 retry ran again at 5120, and the first word came
+after **91.5 seconds** - with a reply that misread the opponent's point anyway.
+
+New `REPEAT_GUARD_ESCALATE = False`. The guard's turn note still goes in exactly as
+before, including the harder "you have answered this already" wording at
+`REPEAT_GUARD_DEEP_AT`; only the switch to deep reasoning (and the 2560 budget that
+came with it in v2.58) is off. Set it to `True` to restore the old behavior.
+Applies to both modes.
+
 ## v2.61
 
 **Hands-free: she listens only when the window says "Listening".**

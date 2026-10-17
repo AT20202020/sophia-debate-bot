@@ -14,7 +14,10 @@ set "VENV_DIR=%~dp0sophia-env"
 set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
 set "REQ_FILE=%~dp0requirements.txt"
 set "REQ_HASH_FILE=%~dp0.requirements.sha256"
-set "MODEL_NAME=qwen3.8:27b"
+REM v2.71: abliterated weights + stock qwen3.8 template, built locally by
+REM make_abliterated_model.py - the model check below runs it if the model is missing.
+REM For the stock model: set this to qwen3.8:27b and change the 4 "model" lines in debate_voice.py.
+set "MODEL_NAME=qwen3.8-abliterated:27b"
 
 REM --- Choose how to run her ------------------------------------------------
 REM Asked first so you can pick and walk away while the checks below run.
@@ -265,12 +268,21 @@ if "!OLLAMA_UP!"=="0" (
 ) else (
     ollama list | findstr /i /c:"%MODEL_NAME%" >nul
     if errorlevel 1 (
-        echo Model %MODEL_NAME% not found - pulling it now. This is a large
-        echo download ^(tens of GB^) and may take a while depending on your
-        echo connection...
-        ollama pull %MODEL_NAME%
+        echo %MODEL_NAME%| findstr /i "abliterated" >nul
+        if not errorlevel 1 (
+            REM v2.71: this model is BUILT locally, not pulled - download the
+            REM weights and wrap them in the stock qwen3.8 template.
+            echo Model %MODEL_NAME% not found - building it now. The first time
+            echo this downloads about 17 GB and may take a while...
+            "%VENV_PYTHON%" "%~dp0make_abliterated_model.py"
+        ) else (
+            echo Model %MODEL_NAME% not found - pulling it now. This is a large
+            echo download ^(tens of GB^) and may take a while depending on your
+            echo connection...
+            ollama pull %MODEL_NAME%
+        )
         if errorlevel 1 (
-            echo [ERROR] Failed to pull %MODEL_NAME%. Check your internet
+            echo [ERROR] Could not get %MODEL_NAME%. Check your internet
             echo connection, then re-run this launcher.
             pause
             exit /b 1
